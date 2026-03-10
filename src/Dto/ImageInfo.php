@@ -20,7 +20,7 @@ class ImageInfo
     /**
      * Creates an ImageInfo instance from the array returned by getimagesize().
      *
-     * @param array $info The array returned by getimagesize()
+     * @param array{0: int, 1: int, 2: int, mime: string} $info The array returned by getimagesize()
      */
     public static function fromGetImageSize(array $info): self
     {

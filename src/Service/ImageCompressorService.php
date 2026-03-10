@@ -121,20 +121,13 @@ class ImageCompressorService
         $outputPath = $outputDirectory.'/'.$compressedFileName;
 
         // Save compressed image
-        $success = false;
-        if (ImageFormatEnum::WEBP === $format && function_exists('imagewebp')) {
-            $success = imagewebp($resizedImage, $outputPath, $quality);
-        } else {
-            // Fallback to JPEG if WebP is not supported or format is JPG
-            $success = imagejpeg($resizedImage, $outputPath, $quality);
-            $format = ImageFormatEnum::JPG;
-        }
+        $saveCheck = $this->saveImage($resizedImage, $outputPath, $format, $quality);
 
         // Free memory
         imagedestroy($sourceImage);
         imagedestroy($resizedImage);
 
-        if (!$success) {
+        if (false === $saveCheck) {
             return new CompressionResponse(
                 success: false,
                 path: null,
@@ -175,6 +168,24 @@ class ImageCompressorService
             IMAGETYPE_GIF => imagecreatefromgif($path),
             IMAGETYPE_WEBP => imagecreatefromwebp($path),
             default => false,
+        };
+    }
+
+    /**
+     * Saves the resized image to disk in the specified format.
+     * Falls back to JPEG if WebP is requested but not supported.
+     *
+     * @return bool true for format selected or false on failure
+     */
+    private function saveImage(
+        \GdImage $image,
+        string $outputPath,
+        ImageFormatEnum $format,
+        int $quality,
+    ): bool {
+        return match ($format) {
+            ImageFormatEnum::WEBP => imagewebp($image, $outputPath, $quality),
+            ImageFormatEnum::JPG => imagejpeg($image, $outputPath, $quality),
         };
     }
 
