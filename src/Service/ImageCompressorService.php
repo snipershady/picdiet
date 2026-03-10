@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Service;
+namespace PicDiet\Service;
+
+use PicDiet\Dto\CompressionResponse;
 
 /**
  * Service for compressing and converting images to WebP or JPEG format.
@@ -22,8 +24,6 @@ class ImageCompressorService
      * @param int    $maxWidth   Maximum width (default: 1920)
      * @param int    $maxHeight  Maximum height (default: 1080)
      * @param int    $quality    Compression quality 0-100 (default: 85)
-     *
-     * @return array{success: bool, path: string|null, error: string|null, original_size: int, compressed_size: int, format: string}
      */
     public function compress(
         string $sourcePath,
@@ -31,30 +31,30 @@ class ImageCompressorService
         int $maxWidth = self::MAX_WIDTH,
         int $maxHeight = self::MAX_HEIGHT,
         ?int $quality = null,
-    ): array {
+    ): CompressionResponse {
         if (!file_exists($sourcePath)) {
-            return [
-                'success' => false,
-                'path' => null,
-                'error' => 'Source file does not exist',
-                'original_size' => 0,
-                'compressed_size' => 0,
-                'format' => $format,
-            ];
+            return new CompressionResponse(
+                success: false,
+                path: null,
+                error: 'Source file does not exist',
+                originalSize: 0,
+                compressedSize: 0,
+                format: $format,
+            );
         }
 
         $originalSize = filesize($sourcePath);
         $imageInfo = getimagesize($sourcePath);
 
         if (false === $imageInfo) {
-            return [
-                'success' => false,
-                'path' => null,
-                'error' => 'Invalid image file',
-                'original_size' => $originalSize,
-                'compressed_size' => 0,
-                'format' => $format,
-            ];
+            return new CompressionResponse(
+                success: false,
+                path: null,
+                error: 'Invalid image file',
+                originalSize: $originalSize,
+                compressedSize: 0,
+                format: $format,
+            );
         }
 
         // Set default quality based on format
@@ -66,14 +66,14 @@ class ImageCompressorService
         $sourceImage = $this->createImageFromFile($sourcePath, $imageInfo[2]);
 
         if (false === $sourceImage) {
-            return [
-                'success' => false,
-                'path' => null,
-                'error' => 'Failed to create image resource',
-                'original_size' => $originalSize,
-                'compressed_size' => 0,
-                'format' => $format,
-            ];
+            return new CompressionResponse(
+                success: false,
+                path: null,
+                error: 'Failed to create image resource',
+                originalSize: $originalSize,
+                compressedSize: 0,
+                format: $format,
+            );
         }
 
         // Calculate new dimensions maintaining aspect ratio
@@ -131,26 +131,26 @@ class ImageCompressorService
         imagedestroy($resizedImage);
 
         if (!$success) {
-            return [
-                'success' => false,
-                'path' => null,
-                'error' => 'Failed to save compressed image',
-                'original_size' => $originalSize,
-                'compressed_size' => 0,
-                'format' => $format,
-            ];
+            return new CompressionResponse(
+                success: false,
+                path: null,
+                error: 'Failed to save compressed image',
+                originalSize: $originalSize,
+                compressedSize: 0,
+                format: $format,
+            );
         }
 
         $compressedSize = filesize($outputPath);
 
-        return [
-            'success' => true,
-            'path' => $outputPath,
-            'error' => null,
-            'original_size' => $originalSize,
-            'compressed_size' => $compressedSize,
-            'format' => $format,
-        ];
+        return new CompressionResponse(
+            success: true,
+            path: $outputPath,
+            error: null,
+            originalSize: $originalSize,
+            compressedSize: $compressedSize,
+            format: $format,
+        );
     }
 
     /**

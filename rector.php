@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Rector\CodingStyle\Rector\ClassLike\NewlineBetweenClassLikeStmtsRector;
 use Rector\CodingStyle\Rector\Stmt\NewlineAfterStatementRector;
 use Rector\Config\RectorConfig;
 use Rector\Naming\Rector\Class_\RenamePropertyToMatchTypeRector;
@@ -15,6 +16,8 @@ return RectorConfig::configure()
                 ])
                 ->withSkip([
                     __DIR__ . '/tests',
+                    \Rector\Removing\Rector\FuncCall\RemoveFuncCallRector::class,
+                    NewlineBetweenClassLikeStmtsRector::class,
                     NewlineAfterStatementRector::class,
                     NewMethodCallWithoutParenthesesRector::class,
                     RenamePropertyToMatchTypeRector::class
