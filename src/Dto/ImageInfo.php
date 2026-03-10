@@ -15,6 +15,21 @@ class ImageInfo
         public readonly int $type,
         public readonly string $mime,
     ) {
+        if ($this->width <= 0) {
+            throw new \InvalidArgumentException('Width must be greater than zero.');
+        }
+        if ($this->height <= 0) {
+            throw new \InvalidArgumentException('Height must be greater than zero.');
+        }
+        if ($this->type <= 0) {
+            throw new \InvalidArgumentException('Type must be a valid IMAGETYPE_* constant.');
+        }
+        if ('' === trim($this->mime)) {
+            throw new \InvalidArgumentException('MIME type must not be empty.');
+        }
+        if (!str_starts_with($this->mime, 'image/')) {
+            throw new \InvalidArgumentException("MIME type invalid, must be of type: 'image/...'.");
+        }
     }
 
     /**
