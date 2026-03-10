@@ -16,6 +16,7 @@ return RectorConfig::configure()
                 ])
                 ->withSkip([
                     __DIR__ . '/tests',
+                    Rector\Naming\Rector\ClassMethod\RenameParamToMatchTypeRector::class,
                     \Rector\Removing\Rector\FuncCall\RemoveFuncCallRector::class,
                     NewlineBetweenClassLikeStmtsRector::class,
                     NewlineAfterStatementRector::class,

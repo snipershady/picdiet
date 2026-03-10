@@ -23,13 +23,21 @@ class TestCompression extends AbstractTestCase
 
         $downloaded = file_put_contents($tmpPath, file_get_contents($imageUrl));
         $this->assertNotFalse($downloaded, 'Download of test image failed');
+        $this->registerTmpFile($tmpPath);
 
         $service = new ImageCompressorService();
         $response = $service->compress($tmpPath);
 
+        if (null !== $response->path) {
+            $this->registerTmpFile($response->path);
+        }
+
+        echo 'original size: '.$response->originalSize.PHP_EOL;
+        echo 'compress size: '.$response->compressedSize.PHP_EOL;
+        echo 'output dir: '.$response->outputDirectory.PHP_EOL;
+        echo 'compressed file: '.$response->compressedFileName.PHP_EOL;
         $this->assertTrue($response->success);
-        echo "original size: ". $response->originalSize . PHP_EOL;
-        echo "compress size: ". $response->compressedSize . PHP_EOL;
+
         $this->assertTrue($response->originalSize > $response->compressedSize);
     }
 }

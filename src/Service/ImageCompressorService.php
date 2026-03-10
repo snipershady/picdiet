@@ -3,6 +3,8 @@
 namespace PicDiet\Service;
 
 use PicDiet\Dto\CompressionResponse;
+use PicDiet\Dto\ImageInfo;
+use PicDiet\Enum\ImageFormatEnum;
 
 /**
  * Service for compressing and converting images to WebP or JPEG format.
@@ -19,15 +21,15 @@ class ImageCompressorService
     /**
      * Compresses an image and converts it to WebP or JPEG format.
      *
-     * @param string $sourcePath Path to the source image
-     * @param string $format     Output format: 'webp' or 'jpeg' (default: 'webp')
-     * @param int    $maxWidth   Maximum width (default: 1920)
-     * @param int    $maxHeight  Maximum height (default: 1080)
-     * @param int    $quality    Compression quality 0-100 (default: 85)
+     * @param string          $sourcePath Path to the source image
+     * @param ImageFormatEnum $format     Output format (default: ImageFormatEnum::WEBP)
+     * @param int             $maxWidth   Maximum width (default: 1920)
+     * @param int             $maxHeight  Maximum height (default: 1080)
+     * @param int             $quality    Compression quality 0-100 (default: 85)
      */
     public function compress(
         string $sourcePath,
-        string $format = 'webp',
+        ImageFormatEnum $format = ImageFormatEnum::WEBP,
         int $maxWidth = self::MAX_WIDTH,
         int $maxHeight = self::MAX_HEIGHT,
         ?int $quality = null,
@@ -40,13 +42,15 @@ class ImageCompressorService
                 originalSize: 0,
                 compressedSize: 0,
                 format: $format,
+                compressedFileName: null,
+                outputDirectory: null,
             );
         }
 
         $originalSize = filesize($sourcePath);
-        $imageInfo = getimagesize($sourcePath);
+        $rawImageInfo = getimagesize($sourcePath);
 
-        if (false === $imageInfo) {
+        if (false === $rawImageInfo) {
             return new CompressionResponse(
                 success: false,
                 path: null,
@@ -54,16 +58,20 @@ class ImageCompressorService
                 originalSize: $originalSize,
                 compressedSize: 0,
                 format: $format,
+                compressedFileName: null,
+                outputDirectory: null,
             );
         }
 
+        $imageInfo = ImageInfo::fromGetImageSize($rawImageInfo);
+
         // Set default quality based on format
         if (null === $quality) {
-            $quality = 'webp' === $format ? self::WEBP_QUALITY : self::JPEG_QUALITY;
+            $quality = ImageFormatEnum::WEBP === $format ? self::WEBP_QUALITY : self::JPEG_QUALITY;
         }
 
         // Create image resource from source
-        $sourceImage = $this->createImageFromFile($sourcePath, $imageInfo[2]);
+        $sourceImage = $this->createImageFromFile($sourcePath, $imageInfo->type);
 
         if (false === $sourceImage) {
             return new CompressionResponse(
@@ -73,26 +81,23 @@ class ImageCompressorService
                 originalSize: $originalSize,
                 compressedSize: 0,
                 format: $format,
+                compressedFileName: null,
+                outputDirectory: null,
             );
         }
 
         // Calculate new dimensions maintaining aspect ratio
-        [$newWidth, $newHeight] = $this->calculateDimensions(
-            $imageInfo[0],
-            $imageInfo[1],
-            $maxWidth,
-            $maxHeight
-        );
+        $newDimensions = $this->calculateDimensions($imageInfo, $maxWidth, $maxHeight);
 
         // Create new image with calculated dimensions
-        $resizedImage = imagecreatetruecolor($newWidth, $newHeight);
+        $resizedImage = imagecreatetruecolor($newDimensions->width, $newDimensions->height);
 
         // Preserve transparency for PNG
-        if (IMAGETYPE_PNG === $imageInfo[2]) {
+        if (IMAGETYPE_PNG === $imageInfo->type) {
             imagealphablending($resizedImage, false);
             imagesavealpha($resizedImage, true);
             $transparent = imagecolorallocatealpha($resizedImage, 255, 255, 255, 127);
-            imagefilledrectangle($resizedImage, 0, 0, $newWidth, $newHeight, $transparent);
+            imagefilledrectangle($resizedImage, 0, 0, $newDimensions->width, $newDimensions->height, $transparent);
         }
 
         // Resize the image
@@ -103,27 +108,26 @@ class ImageCompressorService
             0,
             0,
             0,
-            $newWidth,
-            $newHeight,
-            $imageInfo[0],
-            $imageInfo[1]
+            $newDimensions->width,
+            $newDimensions->height,
+            $imageInfo->width,
+            $imageInfo->height
         );
 
         // Generate output path
         $pathInfo = pathinfo($sourcePath);
-        $extension = 'webp' === $format ? 'webp' : 'jpg';
-        $outputPath = $pathInfo['dirname'].'/'.$pathInfo['filename'].'_compressed.'.$extension;
+        $compressedFileName = $pathInfo['filename'].'_compressed.'.$format->value;
+        $outputDirectory = $pathInfo['dirname'];
+        $outputPath = $outputDirectory.'/'.$compressedFileName;
 
         // Save compressed image
         $success = false;
-        if ('webp' === $format && function_exists('imagewebp')) {
+        if (ImageFormatEnum::WEBP === $format && function_exists('imagewebp')) {
             $success = imagewebp($resizedImage, $outputPath, $quality);
-        } elseif ('jpeg' === $format || 'jpg' === $format) {
-            $success = imagejpeg($resizedImage, $outputPath, $quality);
         } else {
-            // Fallback to JPEG if WebP is not supported
+            // Fallback to JPEG if WebP is not supported or format is JPG
             $success = imagejpeg($resizedImage, $outputPath, $quality);
-            $format = 'jpeg';
+            $format = ImageFormatEnum::JPG;
         }
 
         // Free memory
@@ -138,6 +142,8 @@ class ImageCompressorService
                 originalSize: $originalSize,
                 compressedSize: 0,
                 format: $format,
+                compressedFileName: null,
+                outputDirectory: null,
             );
         }
 
@@ -150,6 +156,8 @@ class ImageCompressorService
             originalSize: $originalSize,
             compressedSize: $compressedSize,
             format: $format,
+            compressedFileName: $compressedFileName,
+            outputDirectory: $outputDirectory,
         );
     }
 
@@ -173,29 +181,29 @@ class ImageCompressorService
     /**
      * Calculates new dimensions maintaining aspect ratio.
      *
-     * @param int $originalWidth  Original image width
-     * @param int $originalHeight Original image height
-     * @param int $maxWidth       Maximum width
-     * @param int $maxHeight      Maximum height
+     * @param ImageInfo $imageInfo Source image information
+     * @param int       $maxWidth  Maximum width
+     * @param int       $maxHeight Maximum height
      *
-     * @return array{0: int, 1: int} New width and height
+     * @return ImageInfo New dimensions with the same type and mime of the source
      */
     private function calculateDimensions(
-        int $originalWidth,
-        int $originalHeight,
+        ImageInfo $imageInfo,
         int $maxWidth,
         int $maxHeight,
-    ): array {
+    ): ImageInfo {
         // If image is smaller than max dimensions, keep original size
-        if ($originalWidth <= $maxWidth && $originalHeight <= $maxHeight) {
-            return [$originalWidth, $originalHeight];
+        if ($imageInfo->width <= $maxWidth && $imageInfo->height <= $maxHeight) {
+            return $imageInfo;
         }
 
-        $ratio = min($maxWidth / $originalWidth, $maxHeight / $originalHeight);
+        $ratio = min($maxWidth / $imageInfo->width, $maxHeight / $imageInfo->height);
 
-        return [
-            (int) round($originalWidth * $ratio),
-            (int) round($originalHeight * $ratio),
-        ];
+        return new ImageInfo(
+            width: (int) round($imageInfo->width * $ratio),
+            height: (int) round($imageInfo->height * $ratio),
+            type: $imageInfo->type,
+            mime: $imageInfo->mime,
+        );
     }
 }
