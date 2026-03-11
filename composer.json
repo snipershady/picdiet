@@ -30,7 +30,7 @@
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.94.2",
-        "phpunit/phpunit": "^12.5.14",
+        "phpunit/phpunit": "*",
         "phpstan/phpstan": "^2.1.40",
         "rector/rector": "^2.3.8"
     },
