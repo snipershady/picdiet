@@ -16,7 +16,7 @@ Lightweight PHP library for compressing and converting images to **WebP** or **J
 
 | Requirement | Version |
 |-------------|---------|
-| PHP         | >= 8.2  |
+| PHP         | >= 8.3  |
 | ext-gd      | *       |
 
 ---
