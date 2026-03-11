@@ -35,7 +35,7 @@
         "rector/rector": "^2.3.8"
     },
     "scripts": {
-        "test": "vendor/bin/phpunit tests/TestCompression.php",
+        "test": "vendor/bin/phpunit",
         "rector": "vendor/bin/rector process",
         "rector-dry": "vendor/bin/rector process --dry-run",
         "cs-fix": "vendor/bin/php-cs-fixer fix",
