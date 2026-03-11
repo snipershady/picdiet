@@ -5,7 +5,7 @@
 [![Monthly Downloads](https://img.shields.io/packagist/dm/snipershady/picdiet.svg)](https://packagist.org/packages/snipershady/picdiet)
 [![PHP Version](https://img.shields.io/packagist/php-v/snipershady/picdiet.svg)](https://packagist.org/packages/snipershady/picdiet)
 [![License](https://img.shields.io/packagist/l/snipershady/picdiet.svg)](https://packagist.org/packages/snipershady/picdiet)
-#[![Tests](https://github.com/snipershady/picdiet/actions/workflows/tests.yml/badge.svg)](https://github.com/snipershady/picdiet/actions/workflows/tests.yml)
+[![Tests](https://github.com/snipershady/picdiet/actions/workflows/tests.yml/badge.svg)](https://github.com/snipershady/picdiet/actions/workflows/tests.yml)
 [![codecov](https://codecov.io/gh/snipershady/picdiet/branch/main/graph/badge.svg)](https://codecov.io/gh/snipershady/picdiet)
 
 Lightweight PHP library for compressing and converting images to **WebP** or **JPEG** format, with automatic resizing while preserving the aspect ratio.
