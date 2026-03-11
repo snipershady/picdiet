@@ -1,5 +1,13 @@
 # PicDiet
 
+[![Latest Version](https://img.shields.io/packagist/v/snipershady/picdiet.svg)](https://packagist.org/packages/snipershady/picdiet)
+[![Total Downloads](https://img.shields.io/packagist/dt/snipershady/picdiet.svg)](https://packagist.org/packages/snipershady/picdiet)
+[![Monthly Downloads](https://img.shields.io/packagist/dm/snipershady/picdiet.svg)](https://packagist.org/packages/snipershady/picdiet)
+[![PHP Version](https://img.shields.io/packagist/php-v/snipershady/picdiet.svg)](https://packagist.org/packages/snipershady/picdiet)
+[![License](https://img.shields.io/packagist/l/snipershady/picdiet.svg)](https://packagist.org/packages/snipershady/picdiet)
+#[![Tests](https://github.com/snipershady/picdiet/actions/workflows/tests.yml/badge.svg)](https://github.com/snipershady/picdiet/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/gh/snipershady/picdiet/branch/main/graph/badge.svg)](https://codecov.io/gh/snipershady/picdiet)
+
 Lightweight PHP library for compressing and converting images to **WebP** or **JPEG** format, with automatic resizing while preserving the aspect ratio.
 
 ---
@@ -166,7 +174,7 @@ if (!$response->success) {
 
 ### Symfony integration
 
-Registrare il service nel container (se non si usa autowiring):
+Register the service in the container (if autowiring is not used):
 
 ```yaml
 # config/services.yaml
@@ -174,7 +182,7 @@ services:
     PicDiet\Service\ImageCompressorService: ~
 ```
 
-Utilizzarlo in un controller:
+Use it in a controller:
 
 ```php
 use PicDiet\Enum\ImageFormatEnum;
@@ -271,4 +279,4 @@ Released under the [GPL-2.0-only](https://www.gnu.org/licenses/old-licenses/gpl-
 
 ## Author
 
-**Stefano Perrini** — [spinfo.it](https://www.spinfo.it) — perrini.stefano@gmail.com
+**Stefano Perrini** — [spinfo.it](https://www.spinfo.it) 
