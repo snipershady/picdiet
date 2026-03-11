@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   test:
     name: PHP ${{ matrix.php }}
@@ -28,7 +31,7 @@ jobs:
           coverage: ${{ matrix.php == '8.2' && 'pcov' || 'none' }}
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction
+        run: composer update --prefer-dist --no-progress --no-interaction
 
       - name: Run tests with coverage
         if: matrix.php == '8.2'
