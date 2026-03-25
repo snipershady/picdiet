@@ -2,21 +2,23 @@
 
 namespace PicDiet\Tests;
 
+use PicDiet\Enum\CompressionStrategy;
 use PicDiet\Enum\ImageFormatEnum;
-use PicDiet\Service\ImageCompressorGDService;
+use PicDiet\Service\ImageCompressorFactory;
+use PicDiet\Service\ImageCompressorInterface;
 
 /**
  * @author Stefano Perrini <perrini.stefano@gmail.com>
  */
 class TestCompression extends AbstractTestCase
 {
-    private ImageCompressorGDService $service;
+    private ImageCompressorInterface $service;
 
     #[\Override]
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new ImageCompressorGDService();
+        $this->service = ImageCompressorFactory::factory(CompressionStrategy::GD);
     }
 
     // -------------------------------------------------------------------------

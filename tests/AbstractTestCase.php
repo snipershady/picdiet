@@ -6,7 +6,7 @@ use PHPUnit\Framework\TestCase;
 use PicDiet\Dto\CompressionResponse;
 
 /**
- * Description of AbstractTestCase.
+ * Base test case providing shared helpers for temporary file creation and cleanup.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com>
  */

@@ -9,6 +9,9 @@ namespace PicDiet\Dto;
  */
 class Dimensions
 {
+    /**
+     * @throws \InvalidArgumentException if width or height is not greater than zero
+     */
     public function __construct(
         public readonly int $width,
         public readonly int $height,

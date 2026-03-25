@@ -9,6 +9,9 @@ namespace PicDiet\Dto;
  */
 class ImageInfo
 {
+    /**
+     * @throws \InvalidArgumentException if any argument fails validation
+     */
     public function __construct(
         public readonly int $width,
         public readonly int $height,
