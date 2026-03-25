@@ -243,6 +243,22 @@ class TestImagick extends AbstractTestCase
     }
 
     // -------------------------------------------------------------------------
+    // Integration
+    // -------------------------------------------------------------------------
+
+    public function testCompressLocalPngFixtureProducesSmalllerOutput(): void
+    {
+        $srcPath = __DIR__.'/fixtures/sample.png';
+        $this->assertFileExists($srcPath, 'PNG fixture is missing from tests/fixtures/');
+
+        $response = $this->service->compress($srcPath);
+        $this->registerResponseFile($response);
+
+        $this->assertTrue($response->success);
+        $this->assertGreaterThan($response->compressedSize, $response->originalSize);
+    }
+
+    // -------------------------------------------------------------------------
     // Sizes
     // -------------------------------------------------------------------------
 

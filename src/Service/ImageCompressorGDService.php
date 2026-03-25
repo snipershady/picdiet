@@ -40,7 +40,7 @@ class ImageCompressorGDService extends AbstractImageCompressorService
         $rawImageInfo = getimagesize($sourcePath);
 
         if (false === $rawImageInfo) {
-            return CompressionResponse::failure('Invalid image file', $format, $originalSize);
+            return CompressionResponse::failure('Invalid image file', $originalSize, $format);
         }
 
         $imageInfo = ImageInfo::fromGetImageSize($rawImageInfo);
@@ -49,7 +49,7 @@ class ImageCompressorGDService extends AbstractImageCompressorService
         $sourceImage = $this->createImageFromFile($sourcePath, $imageInfo->type);
 
         if (false === $sourceImage) {
-            return CompressionResponse::failure('Failed to create image resource', $format, $originalSize);
+            return CompressionResponse::failure('Failed to create image resource', $originalSize, $format);
         }
 
         return $this->processImage(
@@ -114,13 +114,13 @@ class ImageCompressorGDService extends AbstractImageCompressorService
         imagedestroy($resizedImage);
 
         if (false === $saveCheck) {
-            return CompressionResponse::failure('Failed to save compressed image', $format, $originalSize);
+            return CompressionResponse::failure('Failed to save compressed image', $originalSize, $format);
         }
 
         $compressedSize = filesize($outputPath);
 
         if (false === $compressedSize) {
-            return CompressionResponse::failure('Failed to read compressed file size', $format, $originalSize);
+            return CompressionResponse::failure('Failed to read compressed file size', $originalSize, $format);
         }
 
         return CompressionResponse::success(

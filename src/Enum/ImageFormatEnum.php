@@ -9,6 +9,9 @@ namespace PicDiet\Enum;
  */
 enum ImageFormatEnum: string
 {
+    /** WebP format — superior compression with transparency support. Value: 'webp'. */
     case WEBP = 'webp';
+
+    /** JPEG format — universal compatibility, no transparency. Value: 'jpg'. */
     case JPG = 'jpg';
 }

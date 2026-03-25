@@ -52,8 +52,8 @@ class CompressionResponse
 
     public static function failure(
         string $error,
-        ?ImageFormatEnum $format = null,
         int $originalSize = 0,
+        ?ImageFormatEnum $format = null,
     ): self {
         return new self(
             success: false,

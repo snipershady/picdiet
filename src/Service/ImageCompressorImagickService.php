@@ -44,7 +44,7 @@ class ImageCompressorImagickService extends AbstractImageCompressorService
         try {
             $imagick = new \Imagick($sourcePath);
         } catch (\ImagickException $imagickException) {
-            return CompressionResponse::failure('Invalid image file, Exception: '.$imagickException->getMessage(), $format, $originalSize);
+            return CompressionResponse::failure('Invalid image file, Exception: '.$imagickException->getMessage(), $originalSize, $format);
         }
 
         return $this->processImage(
@@ -93,20 +93,20 @@ class ImageCompressorImagickService extends AbstractImageCompressorService
             $imagick->clear();
             $imagick->destroy();
 
-            return CompressionResponse::failure('Failed to save compressed image, Exception: '.$imagickException->getMessage(), $format, $originalSize);
+            return CompressionResponse::failure('Failed to save compressed image, Exception: '.$imagickException->getMessage(), $originalSize, $format);
         }
 
         $imagick->clear();
         $imagick->destroy();
 
         if (!$saveCheck) {
-            return CompressionResponse::failure('Failed to save compressed image', $format, $originalSize);
+            return CompressionResponse::failure('Failed to save compressed image', $originalSize, $format);
         }
 
         $compressedSize = filesize($outputPath);
 
         if (false === $compressedSize) {
-            return CompressionResponse::failure('Failed to read compressed file size', $format, $originalSize);
+            return CompressionResponse::failure('Failed to read compressed file size', $originalSize, $format);
         }
 
         return CompressionResponse::success(
