@@ -58,6 +58,31 @@ class TestCompression extends AbstractTestCase
         $this->service->compress('/tmp/any.jpg', quality: 101);
     }
 
+    public function testCompressThrowsOnNonExistentOutputDirectory(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->service->compress('/tmp/any.jpg', outputDirectory: '/tmp/picdiet_nonexistent_dir_'.uniqid());
+    }
+
+    public function testCompressWritesToCustomOutputDirectory(): void
+    {
+        $srcPath = $this->createTmpJpeg();
+        $customDir = sys_get_temp_dir().'/picdiet_out_'.uniqid();
+        mkdir($customDir);
+
+        $response = $this->service->compress($srcPath, outputDirectory: $customDir);
+
+        // Clean up output file then directory manually
+        if (null !== $response->path && file_exists($response->path)) {
+            unlink($response->path);
+        }
+        rmdir($customDir);
+
+        $this->assertTrue($response->success);
+        $this->assertSame($customDir, $response->outputDirectory);
+        $this->assertStringStartsWith($customDir, $response->path);
+    }
+
     // -------------------------------------------------------------------------
     // Error cases
     // -------------------------------------------------------------------------

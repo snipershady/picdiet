@@ -12,7 +12,7 @@ use PicDiet\Enum\ImageFormatEnum;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
-class ImageCompressorService
+class ImageCompressorService implements ImageCompressorInterface
 {
     private const int MAX_WIDTH = 1920;
     private const int MAX_HEIGHT = 1080;
@@ -37,6 +37,7 @@ class ImageCompressorService
         int $maxWidth = self::MAX_WIDTH,
         int $maxHeight = self::MAX_HEIGHT,
         ?int $quality = null,
+        ?string $outputDirectory = null,
     ): CompressionResponse {
         if ($maxWidth <= 0) {
             throw new \InvalidArgumentException('maxWidth must be greater than zero.');
@@ -46,6 +47,12 @@ class ImageCompressorService
         }
         if (null !== $quality && ($quality < 0 || $quality > 100)) {
             throw new \InvalidArgumentException('quality must be between 0 and 100.');
+        }
+        if (null !== $outputDirectory && !is_dir($outputDirectory)) {
+            throw new \InvalidArgumentException('outputDirectory does not exist.');
+        }
+        if (null !== $outputDirectory && !is_writable($outputDirectory)) {
+            throw new \InvalidArgumentException('outputDirectory is not writable.');
         }
 
         $quality ??= self::DEFAULT_QUALITY;
@@ -75,10 +82,36 @@ class ImageCompressorService
             return CompressionResponse::failure('Failed to create image resource', $format, $originalSize);
         }
 
-        // Calculate new dimensions maintaining aspect ratio
+        return $this->processImage(
+            sourcePath: $sourcePath,
+            sourceImage: $sourceImage,
+            imageInfo: $imageInfo,
+            originalSize: $originalSize,
+            format: $format,
+            maxWidth: $maxWidth,
+            maxHeight: $maxHeight,
+            quality: $quality,
+            outputDirectory: $outputDirectory ?? dirname($sourcePath),
+        );
+    }
+
+    /**
+     * Executes the full image transformation pipeline: resize, transparency
+     * handling, resampling, saving, and size verification.
+     */
+    private function processImage(
+        string $sourcePath,
+        \GdImage $sourceImage,
+        ImageInfo $imageInfo,
+        int $originalSize,
+        ImageFormatEnum $format,
+        int $maxWidth,
+        int $maxHeight,
+        int $quality,
+        string $outputDirectory,
+    ): CompressionResponse {
         $newDimensions = $this->calculateDimensions($imageInfo, $maxWidth, $maxHeight);
 
-        // Create new image with calculated dimensions
         $resizedImage = imagecreatetruecolor($newDimensions->width, $newDimensions->height);
 
         // Preserve transparency for PNG
@@ -89,7 +122,6 @@ class ImageCompressorService
             imagefilledrectangle($resizedImage, 0, 0, $newDimensions->width, $newDimensions->height, $transparent);
         }
 
-        // Resize the image
         imagecopyresampled(
             $resizedImage,
             $sourceImage,
@@ -103,16 +135,11 @@ class ImageCompressorService
             $imageInfo->height
         );
 
-        // Generate output path
-        $pathInfo = pathinfo($sourcePath);
-        $compressedFileName = $pathInfo['filename'].'_compressed.'.$format->value;
-        $outputDirectory = $pathInfo['dirname'];
+        $compressedFileName = pathinfo($sourcePath, PATHINFO_FILENAME).'_compressed.'.$format->value;
         $outputPath = $outputDirectory.'/'.$compressedFileName;
 
-        // Save compressed image
         $saveCheck = $this->saveImage($resizedImage, $outputPath, $format, $quality);
 
-        // Free memory
         imagedestroy($sourceImage);
         imagedestroy($resizedImage);
 
