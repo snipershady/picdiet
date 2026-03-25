@@ -19,8 +19,8 @@ interface ImageCompressorInterface
      * Compresses an image and converts it to WebP or JPEG format.
      *
      * Supported input formats: JPEG, PNG, GIF, WebP.
-     * Note: animated GIFs are accepted but only the first frame is processed;
-     * the animation is not preserved in the output.
+     * Note: animated GIF handling is backend-dependent — GD processes only
+     * the first frame (animation lost), Imagick preserves all frames.
      *
      * @param string          $sourcePath      Path to the source image
      * @param ImageFormatEnum $format          Output format (default: ImageFormatEnum::WEBP)

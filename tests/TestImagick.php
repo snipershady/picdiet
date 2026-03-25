@@ -22,6 +22,59 @@ class TestImagick extends AbstractTestCase
     }
 
     // -------------------------------------------------------------------------
+    // Invalid arguments
+    // -------------------------------------------------------------------------
+
+    public function testCompressThrowsOnZeroMaxWidth(): void
+    {
+        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
+        $this->expectException(\InvalidArgumentException::class);
+        $service->compress('/tmp/any.jpg', maxWidth: 0);
+    }
+
+    public function testCompressThrowsOnNegativeMaxWidth(): void
+    {
+        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
+        $this->expectException(\InvalidArgumentException::class);
+        $service->compress('/tmp/any.jpg', maxWidth: -1);
+    }
+
+    public function testCompressThrowsOnZeroMaxHeight(): void
+    {
+        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
+        $this->expectException(\InvalidArgumentException::class);
+        $service->compress('/tmp/any.jpg', maxHeight: 0);
+    }
+
+    public function testCompressThrowsOnNegativeMaxHeight(): void
+    {
+        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
+        $this->expectException(\InvalidArgumentException::class);
+        $service->compress('/tmp/any.jpg', maxHeight: -1);
+    }
+
+    public function testCompressThrowsOnQualityBelowRange(): void
+    {
+        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
+        $this->expectException(\InvalidArgumentException::class);
+        $service->compress('/tmp/any.jpg', quality: -1);
+    }
+
+    public function testCompressThrowsOnQualityAboveRange(): void
+    {
+        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
+        $this->expectException(\InvalidArgumentException::class);
+        $service->compress('/tmp/any.jpg', quality: 101);
+    }
+
+    public function testCompressThrowsOnNonExistentOutputDirectory(): void
+    {
+        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
+        $this->expectException(\InvalidArgumentException::class);
+        $service->compress('/tmp/any.jpg', outputDirectory: '/tmp/picdiet_nonexistent_dir_'.uniqid());
+    }
+
+    // -------------------------------------------------------------------------
     // Error cases
     // -------------------------------------------------------------------------
 
