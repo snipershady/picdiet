@@ -99,6 +99,7 @@ class TestCompression extends AbstractTestCase
         $this->assertSame(0, $response->compressedSize);
         $this->assertNull($response->compressedFileName);
         $this->assertNull($response->outputDirectory);
+        $this->assertNull($response->format);
     }
 
     public function testCompressReturnsFalseWhenFileIsNotAnImage(): void

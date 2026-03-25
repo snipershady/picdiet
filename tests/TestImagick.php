@@ -5,12 +5,15 @@ namespace PicDiet\Tests;
 use PicDiet\Enum\CompressionStrategy;
 use PicDiet\Enum\ImageFormatEnum;
 use PicDiet\Service\ImageCompressorFactory;
+use PicDiet\Service\ImageCompressorInterface;
 
 /**
  * @author Stefano Perrini <perrini.stefano@gmail.com>
  */
 class TestImagick extends AbstractTestCase
 {
+    private ImageCompressorInterface $service;
+
     #[\Override]
     protected function setUp(): void
     {
@@ -19,6 +22,8 @@ class TestImagick extends AbstractTestCase
         if (!ImageCompressorFactory::isAvailable(CompressionStrategy::IMAGICK)) {
             $this->markTestSkipped('imagick extension not available.');
         }
+
+        $this->service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
     }
 
     // -------------------------------------------------------------------------
@@ -27,51 +32,44 @@ class TestImagick extends AbstractTestCase
 
     public function testCompressThrowsOnZeroMaxWidth(): void
     {
-        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
         $this->expectException(\InvalidArgumentException::class);
-        $service->compress('/tmp/any.jpg', maxWidth: 0);
+        $this->service->compress('/tmp/any.jpg', maxWidth: 0);
     }
 
     public function testCompressThrowsOnNegativeMaxWidth(): void
     {
-        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
         $this->expectException(\InvalidArgumentException::class);
-        $service->compress('/tmp/any.jpg', maxWidth: -1);
+        $this->service->compress('/tmp/any.jpg', maxWidth: -1);
     }
 
     public function testCompressThrowsOnZeroMaxHeight(): void
     {
-        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
         $this->expectException(\InvalidArgumentException::class);
-        $service->compress('/tmp/any.jpg', maxHeight: 0);
+        $this->service->compress('/tmp/any.jpg', maxHeight: 0);
     }
 
     public function testCompressThrowsOnNegativeMaxHeight(): void
     {
-        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
         $this->expectException(\InvalidArgumentException::class);
-        $service->compress('/tmp/any.jpg', maxHeight: -1);
+        $this->service->compress('/tmp/any.jpg', maxHeight: -1);
     }
 
     public function testCompressThrowsOnQualityBelowRange(): void
     {
-        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
         $this->expectException(\InvalidArgumentException::class);
-        $service->compress('/tmp/any.jpg', quality: -1);
+        $this->service->compress('/tmp/any.jpg', quality: -1);
     }
 
     public function testCompressThrowsOnQualityAboveRange(): void
     {
-        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
         $this->expectException(\InvalidArgumentException::class);
-        $service->compress('/tmp/any.jpg', quality: 101);
+        $this->service->compress('/tmp/any.jpg', quality: 101);
     }
 
     public function testCompressThrowsOnNonExistentOutputDirectory(): void
     {
-        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
         $this->expectException(\InvalidArgumentException::class);
-        $service->compress('/tmp/any.jpg', outputDirectory: '/tmp/picdiet_nonexistent_dir_'.uniqid());
+        $this->service->compress('/tmp/any.jpg', outputDirectory: '/tmp/picdiet_nonexistent_dir_'.uniqid());
     }
 
     // -------------------------------------------------------------------------
@@ -80,20 +78,19 @@ class TestImagick extends AbstractTestCase
 
     public function testCompressReturnsFalseWhenSourceFileDoesNotExist(): void
     {
-        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
-        $response = $service->compress('/tmp/nonexistent_picdiet_imagick.jpg');
+        $response = $this->service->compress('/tmp/nonexistent_picdiet_imagick.jpg');
 
         $this->assertFalse($response->success);
         $this->assertSame('Source file does not exist', $response->error);
         $this->assertSame(0, $response->originalSize);
         $this->assertSame(0, $response->compressedSize);
+        $this->assertNull($response->format);
     }
 
     public function testCompressReturnsFalseWhenFileIsNotAnImage(): void
     {
-        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
         $path = $this->createTmpTextFile();
-        $response = $service->compress($path);
+        $response = $this->service->compress($path);
 
         $this->assertFalse($response->success);
         $this->assertStringStartsWith('Invalid image file', $response->error);
@@ -105,9 +102,8 @@ class TestImagick extends AbstractTestCase
 
     public function testCompressJpegToWebpReturnsSuccess(): void
     {
-        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
         $srcPath = $this->createTmpJpeg();
-        $response = $service->compress($srcPath, ImageFormatEnum::WEBP);
+        $response = $this->service->compress($srcPath, ImageFormatEnum::WEBP);
         $this->registerResponseFile($response);
 
         $this->assertTrue($response->success);
@@ -119,9 +115,8 @@ class TestImagick extends AbstractTestCase
 
     public function testCompressJpegToJpgReturnsSuccess(): void
     {
-        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
         $srcPath = $this->createTmpJpeg();
-        $response = $service->compress($srcPath, ImageFormatEnum::JPG);
+        $response = $this->service->compress($srcPath, ImageFormatEnum::JPG);
         $this->registerResponseFile($response);
 
         $this->assertTrue($response->success);
@@ -132,13 +127,56 @@ class TestImagick extends AbstractTestCase
 
     public function testCompressPngToWebpReturnsSuccess(): void
     {
-        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
         $srcPath = $this->createTmpPng();
-        $response = $service->compress($srcPath, ImageFormatEnum::WEBP);
+        $response = $this->service->compress($srcPath, ImageFormatEnum::WEBP);
         $this->registerResponseFile($response);
 
         $this->assertTrue($response->success);
         $this->assertFileExists($response->path);
+    }
+
+    // -------------------------------------------------------------------------
+    // CompressionResponse fields
+    // -------------------------------------------------------------------------
+
+    public function testCompressResponseFileNameContainsSuffix(): void
+    {
+        $srcPath = $this->createTmpJpeg();
+        $response = $this->service->compress($srcPath, ImageFormatEnum::WEBP);
+        $this->registerResponseFile($response);
+
+        $this->assertStringContainsString('_compressed', $response->compressedFileName);
+    }
+
+    public function testCompressResponseOutputDirectoryMatchesSourceDirectory(): void
+    {
+        $srcPath = $this->createTmpJpeg();
+        $response = $this->service->compress($srcPath, ImageFormatEnum::WEBP);
+        $this->registerResponseFile($response);
+
+        $this->assertSame(dirname($srcPath), $response->outputDirectory);
+    }
+
+    public function testCompressResponsePathIsOutputDirectoryPlusFileName(): void
+    {
+        $srcPath = $this->createTmpJpeg();
+        $response = $this->service->compress($srcPath, ImageFormatEnum::WEBP);
+        $this->registerResponseFile($response);
+
+        $this->assertSame(
+            $response->outputDirectory.'/'.$response->compressedFileName,
+            $response->path,
+        );
+    }
+
+    public function testCompressResponseOriginalSizeIsPositive(): void
+    {
+        $srcPath = $this->createTmpJpeg();
+        $response = $this->service->compress($srcPath);
+        $this->registerResponseFile($response);
+
+        $this->assertGreaterThan(0, $response->originalSize);
+        $this->assertGreaterThan(0, $response->compressedSize);
     }
 
     // -------------------------------------------------------------------------
@@ -147,12 +185,11 @@ class TestImagick extends AbstractTestCase
 
     public function testCompressWritesToCustomOutputDirectory(): void
     {
-        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
         $srcPath = $this->createTmpJpeg();
         $customDir = sys_get_temp_dir().'/picdiet_out_'.uniqid();
         mkdir($customDir);
 
-        $response = $service->compress($srcPath, outputDirectory: $customDir);
+        $response = $this->service->compress($srcPath, outputDirectory: $customDir);
 
         if (null !== $response->path && file_exists($response->path)) {
             unlink($response->path);
@@ -170,9 +207,8 @@ class TestImagick extends AbstractTestCase
 
     public function testCompressDoesNotUpscaleImageSmallerThanMaxDimensions(): void
     {
-        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
         $srcPath = $this->createTmpJpeg(width: 50, height: 50);
-        $response = $service->compress($srcPath, ImageFormatEnum::JPG, 200, 200);
+        $response = $this->service->compress($srcPath, ImageFormatEnum::JPG, 200, 200);
         $this->registerResponseFile($response);
 
         $this->assertTrue($response->success);
@@ -181,11 +217,23 @@ class TestImagick extends AbstractTestCase
         $this->assertSame(50, $info[1]);
     }
 
+    public function testCompressResizesImageLargerThanMaxDimensions(): void
+    {
+        $srcPath = $this->createTmpJpeg(width: 400, height: 300);
+        $response = $this->service->compress($srcPath, ImageFormatEnum::JPG, 100, 100);
+        $this->registerResponseFile($response);
+
+        $this->assertTrue($response->success);
+
+        $info = getimagesize($response->path);
+        $this->assertLessThanOrEqual(100, $info[0]);
+        $this->assertLessThanOrEqual(100, $info[1]);
+    }
+
     public function testCompressResizeMaintainsAspectRatio(): void
     {
-        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
         $srcPath = $this->createTmpJpeg(width: 400, height: 200);
-        $response = $service->compress($srcPath, ImageFormatEnum::JPG, 100, 100);
+        $response = $this->service->compress($srcPath, ImageFormatEnum::JPG, 100, 100);
         $this->registerResponseFile($response);
 
         $this->assertTrue($response->success);
@@ -200,9 +248,8 @@ class TestImagick extends AbstractTestCase
 
     public function testCompressSuccessResponseCompressedSizeIsLessOrEqualToOriginal(): void
     {
-        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
         $srcPath = $this->createTmpJpeg(width: 800, height: 600);
-        $response = $service->compress($srcPath, ImageFormatEnum::WEBP);
+        $response = $this->service->compress($srcPath, ImageFormatEnum::WEBP);
         $this->registerResponseFile($response);
 
         $this->assertTrue($response->success);
