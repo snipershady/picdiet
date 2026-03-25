@@ -3,19 +3,19 @@
 namespace PicDiet\Tests;
 
 use PicDiet\Enum\ImageFormatEnum;
-use PicDiet\Service\ImageCompressorService;
+use PicDiet\Service\ImageCompressorGDService;
 
 /**
  * @author Stefano Perrini <perrini.stefano@gmail.com>
  */
 class TestCompression extends AbstractTestCase
 {
-    private ImageCompressorService $service;
+    private ImageCompressorGDService $service;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new ImageCompressorService();
+        $this->service = new ImageCompressorGDService();
     }
 
     // -------------------------------------------------------------------------

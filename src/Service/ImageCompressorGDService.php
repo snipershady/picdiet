@@ -12,7 +12,7 @@ use PicDiet\Enum\ImageFormatEnum;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
-class ImageCompressorService implements ImageCompressorInterface
+class ImageCompressorGDService implements ImageCompressorInterface
 {
     private const int MAX_WIDTH = 1920;
     private const int MAX_HEIGHT = 1080;

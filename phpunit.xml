@@ -7,7 +7,9 @@
     <testsuites>
         <testsuite name="PicDiet Test Suite">
             <file>tests/TestDto.php</file>
+            <file>tests/TestFactory.php</file>
             <file>tests/TestCompression.php</file>
+            <file>tests/TestImagick.php</file>
         </testsuite>
     </testsuites>
 
