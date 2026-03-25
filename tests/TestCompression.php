@@ -113,6 +113,17 @@ class TestCompression extends AbstractTestCase
         $this->assertNull($response->outputDirectory);
     }
 
+    public function testCompressReturnsFalseWhenImageFormatIsUnsupportedByGd(): void
+    {
+        // BMP is detected by getimagesize() (IMAGETYPE_BMP) but is not handled
+        // by createImageFromFile(), which returns false for unknown types.
+        $path = $this->createTmpBmp();
+        $response = $this->service->compress($path);
+
+        $this->assertFalse($response->success);
+        $this->assertSame('Failed to create image resource', $response->error);
+    }
+
     // -------------------------------------------------------------------------
     // Format output
     // -------------------------------------------------------------------------

@@ -76,6 +76,18 @@ abstract class AbstractTestCase extends TestCase
         return $path;
     }
 
+    protected function createTmpBmp(int $width = 10, int $height = 10): string
+    {
+        $path = sys_get_temp_dir().'/picdiet_test_'.uniqid().'.bmp';
+        $img = imagecreatetruecolor($width, $height);
+        imagefilledrectangle($img, 0, 0, $width, $height, imagecolorallocate($img, 255, 0, 0));
+        imagebmp($img, $path);
+        imagedestroy($img);
+        $this->registerTmpFile($path);
+
+        return $path;
+    }
+
     protected function createTmpTextFile(): string
     {
         $path = sys_get_temp_dir().'/picdiet_test_'.uniqid().'.txt';

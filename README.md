@@ -173,9 +173,9 @@ All properties are `readonly`. The constructor is private: instances are only cr
 | `$success` | `bool` | `true` if compression succeeded |
 | `$path` | `string\|null` | Absolute path to the compressed file (`null` on failure) |
 | `$error` | `string\|null` | Error message when `$success` is `false`, otherwise `null` |
-| `$originalSize` | `int` | Source file size in bytes (`0` on failure) |
+| `$originalSize` | `int` | Source file size in bytes (`0` on early failure before the file is read) |
 | `$compressedSize` | `int` | Output file size in bytes (`0` on failure) |
-| `$format` | `ImageFormatEnum` | Format used for the output |
+| `$format` | `ImageFormatEnum\|null` | Format used for the output. Guaranteed non-null on success. On failure, `null` when the error occurs before the image is loaded (e.g. file not found); otherwise carries the intended format |
 | `$compressedFileName` | `string\|null` | File name of the compressed file (`null` on failure) |
 | `$outputDirectory` | `string\|null` | Directory where the compressed file was saved (`null` on failure) |
 
@@ -415,18 +415,24 @@ $service = ImageCompressorFactory::createBest();
 $response = $service->compress('/var/www/uploads/photo.jpg');
 
 if (!$response->success) {
-    // Possible messages:
-    //   'Source file does not exist'
-    //   'Invalid image file'
-    //   'Invalid image file, Exception: <detail>'  (Imagick backend)
+    // Possible error messages:
+    //   'Source file does not exist'          — $format is null, $originalSize is 0
+    //   'Failed to read source file size'     — $format is null, $originalSize is 0
+    //   'Invalid image file'                  — GD backend; $format and $originalSize are set
+    //   'Invalid image file, Exception: ...'  — Imagick backend; $format and $originalSize are set
+    //   'Failed to create image resource'     — GD only; unsupported format (e.g. BMP)
+    //   'Failed to save compressed image'     — write error; $format and $originalSize are set
+    //   'Failed to save compressed image, Exception: ...' — Imagick backend write error
+    //   'Failed to read compressed file size' — post-write stat error
     error_log('PicDiet compression failed: ' . $response->error);
     return;
 }
 
-// All output fields are guaranteed non-null here
+// On success: $path, $compressedFileName, $outputDirectory and $format are guaranteed non-null
 echo $response->path;
 echo $response->compressedFileName;
 echo $response->outputDirectory;
+echo $response->format->value; // 'webp' or 'jpg'
 ```
 
 ---

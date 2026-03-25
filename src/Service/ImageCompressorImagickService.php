@@ -32,13 +32,13 @@ class ImageCompressorImagickService extends AbstractImageCompressorService
         $quality ??= self::DEFAULT_QUALITY;
 
         if (!file_exists($sourcePath)) {
-            return CompressionResponse::failure('Source file does not exist', $format);
+            return CompressionResponse::failure('Source file does not exist');
         }
 
         $originalSize = filesize($sourcePath);
 
         if (false === $originalSize) {
-            return CompressionResponse::failure('Failed to read source file size', $format);
+            return CompressionResponse::failure('Failed to read source file size');
         }
 
         try {

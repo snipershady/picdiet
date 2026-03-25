@@ -37,11 +37,13 @@ abstract class AbstractImageCompressorService implements ImageCompressorInterfac
         if (null !== $quality && ($quality < 0 || $quality > 100)) {
             throw new \InvalidArgumentException('quality must be between 0 and 100.');
         }
-        if (null !== $outputDirectory && !is_dir($outputDirectory)) {
-            throw new \InvalidArgumentException('outputDirectory does not exist.');
-        }
-        if (null !== $outputDirectory && !is_writable($outputDirectory)) {
-            throw new \InvalidArgumentException('outputDirectory is not writable.');
+        if (null !== $outputDirectory) {
+            if (!is_dir($outputDirectory)) {
+                throw new \InvalidArgumentException('outputDirectory does not exist.');
+            }
+            if (!is_writable($outputDirectory)) {
+                throw new \InvalidArgumentException('outputDirectory is not writable.');
+            }
         }
     }
 }

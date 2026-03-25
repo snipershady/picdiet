@@ -11,6 +11,9 @@ use PicDiet\Enum\ImageFormatEnum;
  * to instantiate — the constructor is private to prevent incoherent states
  * (e.g. success: true with path: null).
  *
+ * {@see self::$format} is guaranteed non-null on success. On failure it is null
+ * unless the caller knew the intended format at the point of the error.
+ *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
 class CompressionResponse
@@ -21,7 +24,7 @@ class CompressionResponse
         public readonly ?string $error,
         public readonly int $originalSize,
         public readonly int $compressedSize,
-        public readonly ImageFormatEnum $format,
+        public readonly ?ImageFormatEnum $format,
         public readonly ?string $compressedFileName,
         public readonly ?string $outputDirectory,
     ) {
@@ -49,7 +52,7 @@ class CompressionResponse
 
     public static function failure(
         string $error,
-        ImageFormatEnum $format,
+        ?ImageFormatEnum $format = null,
         int $originalSize = 0,
     ): self {
         return new self(

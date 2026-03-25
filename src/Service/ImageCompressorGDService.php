@@ -14,19 +14,6 @@ use PicDiet\Enum\ImageFormatEnum;
  */
 class ImageCompressorGDService extends AbstractImageCompressorService
 {
-    /**
-     * Compresses an image and converts it to WebP or JPEG format.
-     *
-     * Supported input formats: JPEG, PNG, GIF, WebP.
-     * Note: animated GIFs are accepted but only the first frame is processed;
-     * the animation is not preserved in the output.
-     *
-     * @param string          $sourcePath Path to the source image
-     * @param ImageFormatEnum $format     Output format (default: ImageFormatEnum::WEBP)
-     * @param int             $maxWidth   Maximum width (default: 1920)
-     * @param int             $maxHeight  Maximum height (default: 1080)
-     * @param int|null        $quality    Compression quality 0-100 (default: 85)
-     */
     #[\Override]
     public function compress(
         string $sourcePath,
@@ -41,13 +28,13 @@ class ImageCompressorGDService extends AbstractImageCompressorService
         $quality ??= self::DEFAULT_QUALITY;
 
         if (!file_exists($sourcePath)) {
-            return CompressionResponse::failure('Source file does not exist', $format);
+            return CompressionResponse::failure('Source file does not exist');
         }
 
         $originalSize = filesize($sourcePath);
 
         if (false === $originalSize) {
-            return CompressionResponse::failure('Failed to read source file size', $format);
+            return CompressionResponse::failure('Failed to read source file size');
         }
 
         $rawImageInfo = getimagesize($sourcePath);
