@@ -155,28 +155,29 @@ $response = $service->compress(
 | `$quality` | `int\|null` | `85` | Compression quality 0–100 |
 | `$outputDirectory` | `string\|null` | same as source | Directory where the compressed file is written. Must exist and be writable |
 
-**Output filename:** the compressed file is saved with the suffix `_compressed` appended to the original filename.
+**Output filename:** the compressed file is saved with the suffix `_compressed` appended to the original filename and the extension replaced with the chosen format.
 
 ```
 /images/photo.jpg  →  /images/photo_compressed.webp
+/images/banner.png →  /images/banner_compressed.jpg
 ```
 
 ---
 
 ### `CompressionResponse`
 
-All properties are `readonly`. Use the named constructors `success()` / `failure()` — the constructor is private.
+All properties are `readonly`. The constructor is private: instances are only created via the named constructors `CompressionResponse::success()` and `CompressionResponse::failure()` inside the service layer.
 
 | Property | Type | Description |
 |---|---|---|
 | `$success` | `bool` | `true` if compression succeeded |
-| `$path` | `string\|null` | Absolute path to the compressed file |
+| `$path` | `string\|null` | Absolute path to the compressed file (`null` on failure) |
 | `$error` | `string\|null` | Error message when `$success` is `false`, otherwise `null` |
-| `$originalSize` | `int` | Source file size in bytes |
-| `$compressedSize` | `int` | Output file size in bytes |
+| `$originalSize` | `int` | Source file size in bytes (`0` on failure) |
+| `$compressedSize` | `int` | Output file size in bytes (`0` on failure) |
 | `$format` | `ImageFormatEnum` | Format used for the output |
-| `$compressedFileName` | `string\|null` | File name of the compressed file |
-| `$outputDirectory` | `string\|null` | Directory where the compressed file was saved |
+| `$compressedFileName` | `string\|null` | File name of the compressed file (`null` on failure) |
+| `$outputDirectory` | `string\|null` | Directory where the compressed file was saved (`null` on failure) |
 
 ---
 
@@ -202,16 +203,41 @@ ImageFormatEnum::JPG   // value: 'jpg'
 
 ---
 
-## GD vs Imagick
+## GD vs Imagick: choosing the right backend
+
+Both backends implement the same interface and produce equivalent results in the most common scenarios (JPEG/PNG/WebP in, WebP/JPEG out). The choice depends on your infrastructure constraints and the quality bar you need to meet.
+
+### When to choose GD
+
+- **Zero-friction setup.** `ext-gd` ships with virtually every PHP distribution and most shared hosting plans. No system packages to install, no ImageMagick version to manage.
+- **Minimal memory footprint.** GD keeps everything in the PHP heap: predictable memory usage, easy to tune with `memory_limit`.
+- **Enough for everyday web images.** Thumbnail generation, upload pipelines, and CMS image processing rarely require the extra quality headroom that Imagick provides. GD handles these workloads well.
+- **Shared or managed hosting.** When you cannot install system packages (e.g. plain cPanel hosting), GD is the only viable option.
+
+### When to choose Imagick
+
+- **Higher resampling quality.** Imagick uses the Lanczos filter by default, which produces noticeably sharper results than GD's bicubic when downsizing to thumbnails or aggressive resolutions (e.g. 1200 px → 120 px). The difference is visible on product images, portfolio photos, and print-ready assets.
+- **Automatic EXIF stripping.** `stripImage()` removes all metadata (GPS coordinates, camera model, author, etc.) in a single call. With GD, metadata is silently preserved unless you handle it yourself. This matters for privacy-sensitive applications (medical imaging, user photo uploads).
+- **Animated GIFs.** GD can only read and write the first frame, silently discarding the animation. Imagick preserves all frames. If your application accepts GIF uploads, Imagick is the correct choice.
+- **Wider input format support.** Imagick can decode AVIF, HEIC/HEIF (iPhone default format), TIFF, BMP, and many others out of the box, provided the corresponding system libraries are present. GD is limited to JPEG, PNG, WebP, and GIF.
+- **Large image processing.** ImageMagick delegates heavy work to a native process, avoiding PHP's memory ceiling. Processing a 50 MP RAW-quality TIFF with GD will exhaust `memory_limit`; Imagick will not.
+- **Professional / editorial workflows.** Photo agencies, print pipelines, and e-commerce platforms with high visual standards typically require Lanczos-quality resampling and reliable EXIF removal. Imagick is the appropriate backend for these contexts.
+
+### Summary table
 
 | | GD | Imagick |
 |---|---|---|
 | Availability | Built into most PHP packages | Requires `imagemagick` system package |
-| Resampling quality | Bicubic | Lanczos (sharper on aggressive resize) |
-| EXIF stripping | No | Yes (automatic) |
+| Installation complexity | None | `apt install imagemagick php-imagick` |
+| Resampling algorithm | Bicubic | Lanczos (sharper results) |
+| EXIF / metadata stripping | No | Yes (automatic) |
 | Memory model | PHP heap | Delegated to ImageMagick process |
-| Animated GIF | First frame only | Full animation preserved |
-| AVIF / HEIC input | No | Yes |
+| Animated GIF input | First frame only | Full animation preserved |
+| AVIF / HEIC input | No | Yes (requires system libs) |
+| TIFF, BMP input | No | Yes |
+| Best suited for | Shared hosting, simple pipelines, cost-sensitive deployments | High-quality image processing, privacy-sensitive apps, wide format support |
+
+> **Rule of thumb:** start with `createBest()`. It automatically uses Imagick when available and falls back to GD otherwise, so your code is portable and improves silently as infrastructure grows.
 
 ---
 
@@ -241,13 +267,36 @@ $service = ImageCompressorFactory::createBest();
 $response = $service->compress('/var/www/uploads/photo.jpg');
 
 if ($response->success) {
-    printf(
-        "Saved %d bytes (%.1f%% reduction)\n",
-        $response->originalSize - $response->compressedSize,
-        (1 - $response->compressedSize / $response->originalSize) * 100,
-    );
+    $saved = $response->originalSize - $response->compressedSize;
+    $ratio = (1 - $response->compressedSize / $response->originalSize) * 100;
+
+    printf("Original:   %d bytes\n", $response->originalSize);
+    printf("Compressed: %d bytes\n", $response->compressedSize);
+    printf("Saved:      %d bytes (%.1f%% reduction)\n", $saved, $ratio);
+    printf("Output:     %s\n", $response->path);
 }
 ```
+
+---
+
+### Convert PNG to WebP (preserving transparency)
+
+GD and Imagick both handle PNG alpha channels correctly when converting to WebP, which natively supports transparency.
+
+```php
+use PicDiet\Enum\ImageFormatEnum;
+use PicDiet\Service\ImageCompressorFactory;
+
+$service = ImageCompressorFactory::createBest();
+$response = $service->compress('/var/www/uploads/logo.png', ImageFormatEnum::WEBP);
+
+if ($response->success) {
+    // logo_compressed.webp — fully transparent pixels preserved
+    echo $response->path;
+}
+```
+
+---
 
 ### Convert to JPEG
 
@@ -260,7 +309,54 @@ $service = ImageCompressorFactory::factory(CompressionStrategy::GD);
 $response = $service->compress('/var/www/uploads/photo.png', ImageFormatEnum::JPG);
 ```
 
-### Custom dimensions, quality and output directory
+---
+
+### Resize to a maximum resolution
+
+The image is scaled down proportionally so that neither dimension exceeds the given maximum. Images smaller than the maximum are never upscaled.
+
+```php
+use PicDiet\Enum\ImageFormatEnum;
+use PicDiet\Service\ImageCompressorFactory;
+
+$service = ImageCompressorFactory::createBest();
+
+// Resize to at most 1280×720, keeping aspect ratio
+$response = $service->compress(
+    sourcePath: '/var/www/uploads/photo.jpg',
+    format:     ImageFormatEnum::WEBP,
+    maxWidth:   1280,
+    maxHeight:  720,
+);
+
+// A 1920×1080 source becomes 1280×720
+// A 1920×800 source becomes 1280×533 (ratio preserved)
+// A 640×480 source stays 640×480 (no upscaling)
+```
+
+---
+
+### Generate a thumbnail
+
+```php
+use PicDiet\Enum\ImageFormatEnum;
+use PicDiet\Service\ImageCompressorFactory;
+
+$service = ImageCompressorFactory::createBest();
+$response = $service->compress(
+    sourcePath: '/var/www/uploads/photo.jpg',
+    format:     ImageFormatEnum::WEBP,
+    maxWidth:   300,
+    maxHeight:  300,
+    quality:    70,
+);
+```
+
+---
+
+### Custom output directory
+
+By default the compressed file is saved alongside the source. Pass `outputDirectory` to write it elsewhere. The directory must already exist.
 
 ```php
 use PicDiet\Enum\ImageFormatEnum;
@@ -270,14 +366,47 @@ $service = ImageCompressorFactory::createBest();
 $response = $service->compress(
     sourcePath:      '/var/www/uploads/photo.jpg',
     format:          ImageFormatEnum::WEBP,
-    maxWidth:        1280,
-    maxHeight:       720,
-    quality:         75,
     outputDirectory: '/var/www/compressed/',
+);
+
+if ($response->success) {
+    echo $response->outputDirectory; // /var/www/compressed/
+    echo $response->path;            // /var/www/compressed/photo_compressed.webp
+}
+```
+
+---
+
+### Custom quality
+
+`quality` accepts values from `0` (maximum compression, lowest quality) to `100` (minimum compression, best quality). The default is `85`, which is a good balance for most web use cases.
+
+```php
+use PicDiet\Enum\ImageFormatEnum;
+use PicDiet\Service\ImageCompressorFactory;
+
+$service = ImageCompressorFactory::createBest();
+
+// High quality — larger file, ideal for print or editorial
+$response = $service->compress(
+    sourcePath: '/var/www/uploads/photo.jpg',
+    format:     ImageFormatEnum::WEBP,
+    quality:    95,
+);
+
+// Low quality — smallest file, acceptable for previews and thumbnails
+$response = $service->compress(
+    sourcePath: '/var/www/uploads/photo.jpg',
+    format:     ImageFormatEnum::WEBP,
+    quality:    40,
 );
 ```
 
+---
+
 ### Error handling
+
+`$response->success` is always set. Check it before accessing output properties — they are `null` on failure.
 
 ```php
 use PicDiet\Service\ImageCompressorFactory;
@@ -286,11 +415,51 @@ $service = ImageCompressorFactory::createBest();
 $response = $service->compress('/var/www/uploads/photo.jpg');
 
 if (!$response->success) {
+    // Possible messages:
+    //   'Source file does not exist'
+    //   'Invalid image file'
+    //   'Invalid image file, Exception: <detail>'  (Imagick backend)
     error_log('PicDiet compression failed: ' . $response->error);
     return;
 }
 
-// Safe to use $response->path, $response->compressedFileName, etc.
+// All output fields are guaranteed non-null here
+echo $response->path;
+echo $response->compressedFileName;
+echo $response->outputDirectory;
+```
+
+---
+
+### Batch processing a directory
+
+```php
+use PicDiet\Enum\ImageFormatEnum;
+use PicDiet\Service\ImageCompressorFactory;
+
+$service = ImageCompressorFactory::createBest();
+$outputDir = '/var/www/compressed/';
+
+foreach (glob('/var/www/uploads/*.{jpg,jpeg,png}', GLOB_BRACE) as $sourcePath) {
+    $response = $service->compress(
+        sourcePath:      $sourcePath,
+        format:          ImageFormatEnum::WEBP,
+        maxWidth:        1920,
+        maxHeight:       1080,
+        quality:         85,
+        outputDirectory: $outputDir,
+    );
+
+    if ($response->success) {
+        printf("OK  %s → %s (%d bytes saved)\n",
+            basename($sourcePath),
+            $response->compressedFileName,
+            $response->originalSize - $response->compressedSize,
+        );
+    } else {
+        printf("ERR %s: %s\n", basename($sourcePath), $response->error);
+    }
+}
 ```
 
 ---
@@ -299,7 +468,7 @@ if (!$response->success) {
 
 ### Symfony
 
-Register the interface in the container and bind it to the desired implementation:
+Register the interface in the container and bind it to the factory:
 
 ```yaml
 # config/services.yaml
@@ -308,35 +477,40 @@ services:
         factory: ['PicDiet\Service\ImageCompressorFactory', 'createBest']
 ```
 
-Use it in a controller:
+Use it in a controller or service:
 
 ```php
 use PicDiet\Enum\ImageFormatEnum;
 use PicDiet\Service\ImageCompressorInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Attribute\AsController;
 
-class ImageController
+#[AsController]
+class ImageUploadController
 {
     public function __construct(
         private readonly ImageCompressorInterface $compressor,
     ) {}
 
-    public function upload(Request $request): void
+    public function __invoke(Request $request): void
     {
         $file = $request->files->get('image');
         $uploadPath = '/var/www/uploads/' . $file->getClientOriginalName();
         $file->move('/var/www/uploads', $file->getClientOriginalName());
 
         $response = $this->compressor->compress(
-            sourcePath: $uploadPath,
-            format: ImageFormatEnum::WEBP,
+            sourcePath:      $uploadPath,
+            format:          ImageFormatEnum::WEBP,
+            maxWidth:        1920,
+            maxHeight:       1080,
+            outputDirectory: '/var/www/compressed/',
         );
 
         if (!$response->success) {
             throw new \RuntimeException($response->error);
         }
 
-        // $response->path → path to the compressed file
+        // $response->path → absolute path to the compressed file
     }
 }
 ```
@@ -345,29 +519,52 @@ class ImageController
 
 ### Laravel
 
+Bind the factory in a service provider, then inject it wherever needed:
+
+```php
+// app/Providers/AppServiceProvider.php
+use PicDiet\Service\ImageCompressorFactory;
+use PicDiet\Service\ImageCompressorInterface;
+
+public function register(): void
+{
+    $this->app->bind(ImageCompressorInterface::class, function () {
+        return ImageCompressorFactory::createBest();
+    });
+}
+```
+
+Use it in a controller:
+
 ```php
 use PicDiet\Enum\ImageFormatEnum;
-use PicDiet\Service\ImageCompressorFactory;
+use PicDiet\Service\ImageCompressorInterface;
 use Illuminate\Http\Request;
 
 class ImageController extends Controller
 {
+    public function __construct(
+        private readonly ImageCompressorInterface $compressor,
+    ) {}
+
     public function upload(Request $request): void
     {
         $path = $request->file('image')->store('uploads');
         $fullPath = storage_path('app/' . $path);
 
-        $service = ImageCompressorFactory::createBest();
-        $response = $service->compress(
-            sourcePath: $fullPath,
-            format: ImageFormatEnum::WEBP,
+        $response = $this->compressor->compress(
+            sourcePath:      $fullPath,
+            format:          ImageFormatEnum::WEBP,
+            maxWidth:        1920,
+            maxHeight:       1080,
+            outputDirectory: storage_path('app/compressed'),
         );
 
         if (!$response->success) {
             abort(500, $response->error);
         }
 
-        // $response->path → path to the compressed file
+        // $response->path → absolute path to the compressed file
     }
 }
 ```
@@ -376,7 +573,7 @@ class ImageController extends Controller
 
 ## Custom implementation
 
-Implement `ImageCompressorInterface` to provide your own backend (e.g. cloud API, libvips):
+Implement `ImageCompressorInterface` to plug in your own backend (e.g. a cloud API, libvips, or a mock for testing):
 
 ```php
 use PicDiet\Dto\CompressionResponse;
@@ -385,6 +582,7 @@ use PicDiet\Service\ImageCompressorInterface;
 
 class MyCloudCompressor implements ImageCompressorInterface
 {
+    #[\Override]
     public function compress(
         string $sourcePath,
         ImageFormatEnum $format = ImageFormatEnum::WEBP,
@@ -393,7 +591,15 @@ class MyCloudCompressor implements ImageCompressorInterface
         ?int $quality = null,
         ?string $outputDirectory = null,
     ): CompressionResponse {
-        // your implementation
+        // Call your cloud API, write the output file, then return:
+        return CompressionResponse::success(
+            path:             '/tmp/output.webp',
+            originalSize:     filesize($sourcePath),
+            compressedSize:   1234,
+            format:           $format,
+            compressedFileName: 'output_compressed.webp',
+            outputDirectory:  '/tmp',
+        );
     }
 }
 ```

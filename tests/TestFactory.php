@@ -14,7 +14,7 @@ use PicDiet\Service\ImageCompressorInterface;
 class TestFactory extends AbstractTestCase
 {
     // -------------------------------------------------------------------------
-    // create()
+    // factory()
     // -------------------------------------------------------------------------
 
     public function testCreateGdReturnsGdService(): void

@@ -11,6 +11,7 @@ use PicDiet\Service\ImageCompressorFactory;
  */
 class TestImagick extends AbstractTestCase
 {
+    #[\Override]
     protected function setUp(): void
     {
         parent::setUp();
@@ -88,6 +89,29 @@ class TestImagick extends AbstractTestCase
     }
 
     // -------------------------------------------------------------------------
+    // Output directory
+    // -------------------------------------------------------------------------
+
+    public function testCompressWritesToCustomOutputDirectory(): void
+    {
+        $service = ImageCompressorFactory::factory(CompressionStrategy::IMAGICK);
+        $srcPath = $this->createTmpJpeg();
+        $customDir = sys_get_temp_dir().'/picdiet_out_'.uniqid();
+        mkdir($customDir);
+
+        $response = $service->compress($srcPath, outputDirectory: $customDir);
+
+        if (null !== $response->path && file_exists($response->path)) {
+            unlink($response->path);
+        }
+        rmdir($customDir);
+
+        $this->assertTrue($response->success);
+        $this->assertSame($customDir, $response->outputDirectory);
+        $this->assertStringStartsWith($customDir, $response->path);
+    }
+
+    // -------------------------------------------------------------------------
     // Resize behaviour
     // -------------------------------------------------------------------------
 
@@ -130,52 +154,5 @@ class TestImagick extends AbstractTestCase
 
         $this->assertTrue($response->success);
         $this->assertLessThanOrEqual($response->originalSize, $response->compressedSize);
-    }
-
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
-    private function createTmpJpeg(int $width = 200, int $height = 150): string
-    {
-        $path = sys_get_temp_dir().'/picdiet_imagick_test_'.uniqid().'.jpg';
-        $img = imagecreatetruecolor($width, $height);
-        imagefilledrectangle($img, 0, 0, $width, $height, imagecolorallocate($img, 255, 128, 0));
-        imagejpeg($img, $path, 90);
-        imagedestroy($img);
-        $this->registerTmpFile($path);
-
-        return $path;
-    }
-
-    private function createTmpPng(int $width = 200, int $height = 150): string
-    {
-        $path = sys_get_temp_dir().'/picdiet_imagick_test_'.uniqid().'.png';
-        $img = imagecreatetruecolor($width, $height);
-        imagealphablending($img, false);
-        imagesavealpha($img, true);
-        $transparent = imagecolorallocatealpha($img, 0, 0, 0, 127);
-        imagefilledrectangle($img, 0, 0, $width, $height, $transparent);
-        imagepng($img, $path);
-        imagedestroy($img);
-        $this->registerTmpFile($path);
-
-        return $path;
-    }
-
-    private function createTmpTextFile(): string
-    {
-        $path = sys_get_temp_dir().'/picdiet_imagick_test_'.uniqid().'.txt';
-        file_put_contents($path, 'this is not an image');
-        $this->registerTmpFile($path);
-
-        return $path;
-    }
-
-    private function registerResponseFile(?\PicDiet\Dto\CompressionResponse $response): void
-    {
-        if (null !== $response?->path) {
-            $this->registerTmpFile($response->path);
-        }
     }
 }
