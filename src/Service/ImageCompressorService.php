@@ -3,6 +3,7 @@
 namespace PicDiet\Service;
 
 use PicDiet\Dto\CompressionResponse;
+use PicDiet\Dto\Dimensions;
 use PicDiet\Dto\ImageInfo;
 use PicDiet\Enum\ImageFormatEnum;
 
@@ -15,11 +16,14 @@ class ImageCompressorService
 {
     private const int MAX_WIDTH = 1920;
     private const int MAX_HEIGHT = 1080;
-    private const int WEBP_QUALITY = 85;
-    private const int JPEG_QUALITY = 85;
+    private const int DEFAULT_QUALITY = 85;
 
     /**
      * Compresses an image and converts it to WebP or JPEG format.
+     *
+     * Supported input formats: JPEG, PNG, GIF, WebP.
+     * Note: animated GIFs are accepted but only the first frame is processed;
+     * the animation is not preserved in the output.
      *
      * @param string          $sourcePath Path to the source image
      * @param ImageFormatEnum $format     Output format (default: ImageFormatEnum::WEBP)
@@ -34,6 +38,16 @@ class ImageCompressorService
         int $maxHeight = self::MAX_HEIGHT,
         ?int $quality = null,
     ): CompressionResponse {
+        if ($maxWidth <= 0) {
+            throw new \InvalidArgumentException('maxWidth must be greater than zero.');
+        }
+        if ($maxHeight <= 0) {
+            throw new \InvalidArgumentException('maxHeight must be greater than zero.');
+        }
+        if (null !== $quality && ($quality < 0 || $quality > 100)) {
+            throw new \InvalidArgumentException('quality must be between 0 and 100.');
+        }
+
         if (!file_exists($sourcePath)) {
             return new CompressionResponse(
                 success: false,
@@ -48,6 +62,20 @@ class ImageCompressorService
         }
 
         $originalSize = filesize($sourcePath);
+
+        if (false === $originalSize) {
+            return new CompressionResponse(
+                success: false,
+                path: null,
+                error: 'Failed to read source file size',
+                originalSize: 0,
+                compressedSize: 0,
+                format: $format,
+                compressedFileName: null,
+                outputDirectory: null,
+            );
+        }
+
         $rawImageInfo = getimagesize($sourcePath);
 
         if (false === $rawImageInfo) {
@@ -67,7 +95,7 @@ class ImageCompressorService
 
         // Set default quality based on format
         if (null === $quality) {
-            $quality = ImageFormatEnum::WEBP === $format ? self::WEBP_QUALITY : self::JPEG_QUALITY;
+            $quality = self::DEFAULT_QUALITY;
         }
 
         // Create image resource from source
@@ -142,6 +170,19 @@ class ImageCompressorService
 
         $compressedSize = filesize($outputPath);
 
+        if (false === $compressedSize) {
+            return new CompressionResponse(
+                success: false,
+                path: null,
+                error: 'Failed to read compressed file size',
+                originalSize: $originalSize,
+                compressedSize: 0,
+                format: $format,
+                compressedFileName: null,
+                outputDirectory: null,
+            );
+        }
+
         return new CompressionResponse(
             success: true,
             path: $outputPath,
@@ -173,9 +214,8 @@ class ImageCompressorService
 
     /**
      * Saves the resized image to disk in the specified format.
-     * Falls back to JPEG if WebP is requested but not supported.
      *
-     * @return bool true for format selected or false on failure
+     * @return bool true on success, false on failure
      */
     private function saveImage(
         \GdImage $image,
@@ -195,26 +235,22 @@ class ImageCompressorService
      * @param ImageInfo $imageInfo Source image information
      * @param int       $maxWidth  Maximum width
      * @param int       $maxHeight Maximum height
-     *
-     * @return ImageInfo New dimensions with the same type and mime of the source
      */
     private function calculateDimensions(
         ImageInfo $imageInfo,
         int $maxWidth,
         int $maxHeight,
-    ): ImageInfo {
+    ): Dimensions {
         // If image is smaller than max dimensions, keep original size
         if ($imageInfo->width <= $maxWidth && $imageInfo->height <= $maxHeight) {
-            return $imageInfo;
+            return new Dimensions($imageInfo->width, $imageInfo->height);
         }
 
         $ratio = min($maxWidth / $imageInfo->width, $maxHeight / $imageInfo->height);
 
-        return new ImageInfo(
+        return new Dimensions(
             width: (int) round($imageInfo->width * $ratio),
             height: (int) round($imageInfo->height * $ratio),
-            type: $imageInfo->type,
-            mime: $imageInfo->mime,
         );
     }
 }
