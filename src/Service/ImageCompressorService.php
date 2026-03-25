@@ -48,70 +48,31 @@ class ImageCompressorService
             throw new \InvalidArgumentException('quality must be between 0 and 100.');
         }
 
+        $quality ??= self::DEFAULT_QUALITY;
+
         if (!file_exists($sourcePath)) {
-            return new CompressionResponse(
-                success: false,
-                path: null,
-                error: 'Source file does not exist',
-                originalSize: 0,
-                compressedSize: 0,
-                format: $format,
-                compressedFileName: null,
-                outputDirectory: null,
-            );
+            return CompressionResponse::failure('Source file does not exist', $format);
         }
 
         $originalSize = filesize($sourcePath);
 
         if (false === $originalSize) {
-            return new CompressionResponse(
-                success: false,
-                path: null,
-                error: 'Failed to read source file size',
-                originalSize: 0,
-                compressedSize: 0,
-                format: $format,
-                compressedFileName: null,
-                outputDirectory: null,
-            );
+            return CompressionResponse::failure('Failed to read source file size', $format);
         }
 
         $rawImageInfo = getimagesize($sourcePath);
 
         if (false === $rawImageInfo) {
-            return new CompressionResponse(
-                success: false,
-                path: null,
-                error: 'Invalid image file',
-                originalSize: $originalSize,
-                compressedSize: 0,
-                format: $format,
-                compressedFileName: null,
-                outputDirectory: null,
-            );
+            return CompressionResponse::failure('Invalid image file', $format, $originalSize);
         }
 
         $imageInfo = ImageInfo::fromGetImageSize($rawImageInfo);
-
-        // Set default quality based on format
-        if (null === $quality) {
-            $quality = self::DEFAULT_QUALITY;
-        }
 
         // Create image resource from source
         $sourceImage = $this->createImageFromFile($sourcePath, $imageInfo->type);
 
         if (false === $sourceImage) {
-            return new CompressionResponse(
-                success: false,
-                path: null,
-                error: 'Failed to create image resource',
-                originalSize: $originalSize,
-                compressedSize: 0,
-                format: $format,
-                compressedFileName: null,
-                outputDirectory: null,
-            );
+            return CompressionResponse::failure('Failed to create image resource', $format, $originalSize);
         }
 
         // Calculate new dimensions maintaining aspect ratio
@@ -156,37 +117,17 @@ class ImageCompressorService
         imagedestroy($resizedImage);
 
         if (false === $saveCheck) {
-            return new CompressionResponse(
-                success: false,
-                path: null,
-                error: 'Failed to save compressed image',
-                originalSize: $originalSize,
-                compressedSize: 0,
-                format: $format,
-                compressedFileName: null,
-                outputDirectory: null,
-            );
+            return CompressionResponse::failure('Failed to save compressed image', $format, $originalSize);
         }
 
         $compressedSize = filesize($outputPath);
 
         if (false === $compressedSize) {
-            return new CompressionResponse(
-                success: false,
-                path: null,
-                error: 'Failed to read compressed file size',
-                originalSize: $originalSize,
-                compressedSize: 0,
-                format: $format,
-                compressedFileName: null,
-                outputDirectory: null,
-            );
+            return CompressionResponse::failure('Failed to read compressed file size', $format, $originalSize);
         }
 
-        return new CompressionResponse(
-            success: true,
+        return CompressionResponse::success(
             path: $outputPath,
-            error: null,
             originalSize: $originalSize,
             compressedSize: $compressedSize,
             format: $format,

@@ -196,6 +196,16 @@ class TestCompression extends AbstractTestCase
         $this->assertGreaterThan(0, $response->compressedSize);
     }
 
+    public function testCompressSuccessResponseCompressedSizeIsLessOrEqualToOriginal(): void
+    {
+        $srcPath = $this->createTmpJpeg(width: 800, height: 600);
+        $response = $this->service->compress($srcPath, ImageFormatEnum::WEBP);
+        $this->registerResponseFile($response);
+
+        $this->assertTrue($response->success);
+        $this->assertLessThanOrEqual($response->originalSize, $response->compressedSize);
+    }
+
     // -------------------------------------------------------------------------
     // Resize behaviour
     // -------------------------------------------------------------------------
