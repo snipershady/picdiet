@@ -64,13 +64,32 @@ class TestCompression extends AbstractTestCase
     public function testCompressThrowsOnNonExistentOutputDirectory(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->service->compress('/tmp/any.jpg', outputDirectory: '/tmp/picdiet_nonexistent_dir_'.uniqid());
+        $this->service->compress('/tmp/any.jpg', outputDirectory: '/tmp/picdiet_nonexistent_dir_' . uniqid());
+    }
+
+    public function testCompressThrowsOnNonWritableOutputDirectory(): void
+    {
+        if (0 === posix_getuid()) {
+            $this->markTestSkipped('Running as root — filesystem permissions are not enforced.');
+        }
+
+        $readOnlyDir = sys_get_temp_dir() . '/picdiet_readonly_' . uniqid();
+        mkdir($readOnlyDir);
+        chmod($readOnlyDir, 0500);
+
+        try {
+            $this->expectException(\InvalidArgumentException::class);
+            $this->service->compress('/tmp/any.jpg', outputDirectory: $readOnlyDir);
+        } finally {
+            chmod($readOnlyDir, 0700);
+            rmdir($readOnlyDir);
+        }
     }
 
     public function testCompressWritesToCustomOutputDirectory(): void
     {
         $srcPath = $this->createTmpJpeg();
-        $customDir = sys_get_temp_dir().'/picdiet_out_'.uniqid();
+        $customDir = sys_get_temp_dir() . '/picdiet_out_' . uniqid();
         mkdir($customDir);
 
         $response = $this->service->compress($srcPath, outputDirectory: $customDir);
@@ -125,6 +144,29 @@ class TestCompression extends AbstractTestCase
 
         $this->assertFalse($response->success);
         $this->assertSame('Failed to create image resource', $response->error);
+    }
+
+    public function testCompressReturnsFalseWhenSaveFails(): void
+    {
+        $srcPath = $this->createTmpJpeg();
+        $outputDir = sys_get_temp_dir() . '/picdiet_collide_' . uniqid();
+        mkdir($outputDir);
+
+        // Pre-create a directory at the exact path imagewebp() will try to write to,
+        // forcing the underlying GD save call to fail.
+        $compressedFileName = pathinfo($srcPath, PATHINFO_FILENAME) . '_compressed.' . ImageFormatEnum::WEBP->value;
+        $collisionPath = $outputDir . '/' . $compressedFileName;
+        mkdir($collisionPath);
+
+        try {
+            $response = @$this->service->compress($srcPath, outputDirectory: $outputDir);
+
+            $this->assertFalse($response->success);
+            $this->assertSame('Failed to save compressed image', $response->error);
+        } finally {
+            rmdir($collisionPath);
+            rmdir($outputDir);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -221,7 +263,7 @@ class TestCompression extends AbstractTestCase
         $this->registerResponseFile($response);
 
         $this->assertSame(
-            $response->outputDirectory.'/'.$response->compressedFileName,
+            $response->outputDirectory . '/' . $response->compressedFileName,
             $response->path,
         );
     }
@@ -352,7 +394,7 @@ class TestCompression extends AbstractTestCase
 
     public function testCompressLocalPngFixtureProducesSmalllerOutput(): void
     {
-        $srcPath = __DIR__.'/fixtures/sample.png';
+        $srcPath = __DIR__ . '/fixtures/sample.png';
         $this->assertFileExists($srcPath, 'PNG fixture is missing from tests/fixtures/');
 
         $response = $this->service->compress($srcPath);

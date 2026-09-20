@@ -39,7 +39,7 @@ abstract class AbstractTestCase extends TestCase
 
     protected function createTmpJpeg(int $width = 200, int $height = 150): string
     {
-        $path = sys_get_temp_dir().'/picdiet_test_'.uniqid().'.jpg';
+        $path = sys_get_temp_dir() . '/picdiet_test_' . uniqid() . '.jpg';
         $img = imagecreatetruecolor($width, $height);
         imagefilledrectangle($img, 0, 0, $width, $height, imagecolorallocate($img, 255, 128, 0));
         imagejpeg($img, $path, 90);
@@ -51,7 +51,7 @@ abstract class AbstractTestCase extends TestCase
 
     protected function createTmpPng(int $width = 200, int $height = 150): string
     {
-        $path = sys_get_temp_dir().'/picdiet_test_'.uniqid().'.png';
+        $path = sys_get_temp_dir() . '/picdiet_test_' . uniqid() . '.png';
         $img = imagecreatetruecolor($width, $height);
         imagealphablending($img, false);
         imagesavealpha($img, true);
@@ -66,7 +66,7 @@ abstract class AbstractTestCase extends TestCase
 
     protected function createTmpWebp(int $width = 200, int $height = 150): string
     {
-        $path = sys_get_temp_dir().'/picdiet_test_'.uniqid().'.webp';
+        $path = sys_get_temp_dir() . '/picdiet_test_' . uniqid() . '.webp';
         $img = imagecreatetruecolor($width, $height);
         imagefilledrectangle($img, 0, 0, $width, $height, imagecolorallocate($img, 0, 128, 255));
         imagewebp($img, $path, 90);
@@ -78,7 +78,7 @@ abstract class AbstractTestCase extends TestCase
 
     protected function createTmpBmp(int $width = 10, int $height = 10): string
     {
-        $path = sys_get_temp_dir().'/picdiet_test_'.uniqid().'.bmp';
+        $path = sys_get_temp_dir() . '/picdiet_test_' . uniqid() . '.bmp';
         $img = imagecreatetruecolor($width, $height);
         imagefilledrectangle($img, 0, 0, $width, $height, imagecolorallocate($img, 255, 0, 0));
         imagebmp($img, $path);
@@ -90,7 +90,7 @@ abstract class AbstractTestCase extends TestCase
 
     protected function createTmpTextFile(): string
     {
-        $path = sys_get_temp_dir().'/picdiet_test_'.uniqid().'.txt';
+        $path = sys_get_temp_dir() . '/picdiet_test_' . uniqid() . '.txt';
         file_put_contents($path, 'this is not an image');
         $this->registerTmpFile($path);
 

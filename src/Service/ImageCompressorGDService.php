@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PicDiet\Service;
 
 use PicDiet\Dto\CompressionResponse;
@@ -17,7 +19,7 @@ class ImageCompressorGDService extends AbstractImageCompressorService
     #[\Override]
     public function compress(
         string $sourcePath,
-        ImageFormatEnum $format = ImageFormatEnum::WEBP,
+        ImageFormatEnum $imageFormatEnum = ImageFormatEnum::WEBP,
         int $maxWidth = self::MAX_WIDTH,
         int $maxHeight = self::MAX_HEIGHT,
         ?int $quality = null,
@@ -40,7 +42,7 @@ class ImageCompressorGDService extends AbstractImageCompressorService
         $rawImageInfo = getimagesize($sourcePath);
 
         if (false === $rawImageInfo) {
-            return CompressionResponse::failure('Invalid image file', $originalSize, $format);
+            return CompressionResponse::failure('Invalid image file', $originalSize, $imageFormatEnum);
         }
 
         $imageInfo = ImageInfo::fromGetImageSize($rawImageInfo);
@@ -49,15 +51,15 @@ class ImageCompressorGDService extends AbstractImageCompressorService
         $sourceImage = $this->createImageFromFile($sourcePath, $imageInfo->type);
 
         if (false === $sourceImage) {
-            return CompressionResponse::failure('Failed to create image resource', $originalSize, $format);
+            return CompressionResponse::failure('Failed to create image resource', $originalSize, $imageFormatEnum);
         }
 
         return $this->processImage(
             sourcePath: $sourcePath,
-            sourceImage: $sourceImage,
+            gdImage: $sourceImage,
             imageInfo: $imageInfo,
             originalSize: $originalSize,
-            format: $format,
+            imageFormatEnum: $imageFormatEnum,
             maxWidth: $maxWidth,
             maxHeight: $maxHeight,
             quality: $quality,
@@ -71,63 +73,77 @@ class ImageCompressorGDService extends AbstractImageCompressorService
      */
     private function processImage(
         string $sourcePath,
-        \GdImage $sourceImage,
+        \GdImage $gdImage,
         ImageInfo $imageInfo,
         int $originalSize,
-        ImageFormatEnum $format,
+        ImageFormatEnum $imageFormatEnum,
         int $maxWidth,
         int $maxHeight,
         int $quality,
         string $outputDirectory,
     ): CompressionResponse {
         $newDimensions = $this->calculateDimensions($imageInfo, $maxWidth, $maxHeight);
+        $width = $newDimensions->width;
+        $height = $newDimensions->height;
 
-        $resizedImage = imagecreatetruecolor($newDimensions->width, $newDimensions->height);
+        if ($width < 1 || $height < 1) {
+            return CompressionResponse::failure('Computed dimensions must be positive', $originalSize, $imageFormatEnum);
+        }
+
+        $resizedImage = imagecreatetruecolor($width, $height);
 
         // Preserve transparency for PNG
         if (IMAGETYPE_PNG === $imageInfo->type) {
-            imagealphablending($resizedImage, false);
-            imagesavealpha($resizedImage, true);
+            imagealphablending($resizedImage, enable: false);
+            imagesavealpha($resizedImage, enable: true);
             $transparent = imagecolorallocatealpha($resizedImage, 255, 255, 255, 127);
-            imagefilledrectangle($resizedImage, 0, 0, $newDimensions->width, $newDimensions->height, $transparent);
+
+            if (false === $transparent) {
+                imagedestroy($gdImage);
+                imagedestroy($resizedImage);
+
+                return CompressionResponse::failure('Failed to allocate transparent color', $originalSize, $imageFormatEnum);
+            }
+
+            imagefilledrectangle($resizedImage, 0, 0, $width, $height, $transparent);
         }
 
         imagecopyresampled(
             $resizedImage,
-            $sourceImage,
+            $gdImage,
             0,
             0,
             0,
             0,
-            $newDimensions->width,
-            $newDimensions->height,
+            $width,
+            $height,
             $imageInfo->width,
             $imageInfo->height
         );
 
-        $compressedFileName = pathinfo($sourcePath, PATHINFO_FILENAME).'_compressed.'.$format->value;
-        $outputPath = $outputDirectory.'/'.$compressedFileName;
+        $compressedFileName = pathinfo($sourcePath, PATHINFO_FILENAME) . '_compressed.' . $imageFormatEnum->value;
+        $outputPath = $outputDirectory . '/' . $compressedFileName;
 
-        $saveCheck = $this->saveImage($resizedImage, $outputPath, $format, $quality);
+        $saveCheck = $this->saveImage($resizedImage, $outputPath, $imageFormatEnum, $quality);
 
-        imagedestroy($sourceImage);
+        imagedestroy($gdImage);
         imagedestroy($resizedImage);
 
         if (false === $saveCheck) {
-            return CompressionResponse::failure('Failed to save compressed image', $originalSize, $format);
+            return CompressionResponse::failure('Failed to save compressed image', $originalSize, $imageFormatEnum);
         }
 
         $compressedSize = filesize($outputPath);
 
         if (false === $compressedSize) {
-            return CompressionResponse::failure('Failed to read compressed file size', $originalSize, $format);
+            return CompressionResponse::failure('Failed to read compressed file size', $originalSize, $imageFormatEnum);
         }
 
         return CompressionResponse::success(
             path: $outputPath,
             originalSize: $originalSize,
             compressedSize: $compressedSize,
-            format: $format,
+            imageFormatEnum: $imageFormatEnum,
             compressedFileName: $compressedFileName,
             outputDirectory: $outputDirectory,
         );
@@ -156,14 +172,14 @@ class ImageCompressorGDService extends AbstractImageCompressorService
      * @return bool true on success, false on failure
      */
     private function saveImage(
-        \GdImage $image,
+        \GdImage $gdImage,
         string $outputPath,
-        ImageFormatEnum $format,
+        ImageFormatEnum $imageFormatEnum,
         int $quality,
     ): bool {
-        return match ($format) {
-            ImageFormatEnum::WEBP => imagewebp($image, $outputPath, $quality),
-            ImageFormatEnum::JPG => imagejpeg($image, $outputPath, $quality),
+        return match ($imageFormatEnum) {
+            ImageFormatEnum::WEBP => imagewebp($gdImage, $outputPath, $quality),
+            ImageFormatEnum::JPG => imagejpeg($gdImage, $outputPath, $quality),
         };
     }
 

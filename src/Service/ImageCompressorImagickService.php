@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PicDiet\Service;
 
 use PicDiet\Dto\CompressionResponse;
@@ -21,7 +23,7 @@ class ImageCompressorImagickService extends AbstractImageCompressorService
     #[\Override]
     public function compress(
         string $sourcePath,
-        ImageFormatEnum $format = ImageFormatEnum::WEBP,
+        ImageFormatEnum $imageFormatEnum = ImageFormatEnum::WEBP,
         int $maxWidth = self::MAX_WIDTH,
         int $maxHeight = self::MAX_HEIGHT,
         ?int $quality = null,
@@ -44,14 +46,14 @@ class ImageCompressorImagickService extends AbstractImageCompressorService
         try {
             $imagick = new \Imagick($sourcePath);
         } catch (\ImagickException $imagickException) {
-            return CompressionResponse::failure('Invalid image file, Exception: '.$imagickException->getMessage(), $originalSize, $format);
+            return CompressionResponse::failure('Invalid image file, Exception: ' . $imagickException->getMessage(), $originalSize, $imageFormatEnum);
         }
 
         return $this->processImage(
             sourcePath: $sourcePath,
             imagick: $imagick,
             originalSize: $originalSize,
-            format: $format,
+            imageFormatEnum: $imageFormatEnum,
             maxWidth: $maxWidth,
             maxHeight: $maxHeight,
             quality: $quality,
@@ -67,7 +69,7 @@ class ImageCompressorImagickService extends AbstractImageCompressorService
         string $sourcePath,
         \Imagick $imagick,
         int $originalSize,
-        ImageFormatEnum $format,
+        ImageFormatEnum $imageFormatEnum,
         int $maxWidth,
         int $maxHeight,
         int $quality,
@@ -81,11 +83,11 @@ class ImageCompressorImagickService extends AbstractImageCompressorService
             $imagick->thumbnailImage($maxWidth, $maxHeight, bestfit: true);
         }
 
-        $imagick->setImageFormat($this->imagickFormat($format));
+        $imagick->setImageFormat($this->imagickFormat($imageFormatEnum));
         $imagick->setImageCompressionQuality($quality);
 
-        $compressedFileName = pathinfo($sourcePath, PATHINFO_FILENAME).'_compressed.'.$format->value;
-        $outputPath = $outputDirectory.'/'.$compressedFileName;
+        $compressedFileName = pathinfo($sourcePath, PATHINFO_FILENAME) . '_compressed.' . $imageFormatEnum->value;
+        $outputPath = $outputDirectory . '/' . $compressedFileName;
 
         try {
             $saveCheck = $imagick->writeImage($outputPath);
@@ -93,27 +95,27 @@ class ImageCompressorImagickService extends AbstractImageCompressorService
             $imagick->clear();
             $imagick->destroy();
 
-            return CompressionResponse::failure('Failed to save compressed image, Exception: '.$imagickException->getMessage(), $originalSize, $format);
+            return CompressionResponse::failure('Failed to save compressed image, Exception: ' . $imagickException->getMessage(), $originalSize, $imageFormatEnum);
         }
 
         $imagick->clear();
         $imagick->destroy();
 
         if (!$saveCheck) {
-            return CompressionResponse::failure('Failed to save compressed image', $originalSize, $format);
+            return CompressionResponse::failure('Failed to save compressed image', $originalSize, $imageFormatEnum);
         }
 
         $compressedSize = filesize($outputPath);
 
         if (false === $compressedSize) {
-            return CompressionResponse::failure('Failed to read compressed file size', $originalSize, $format);
+            return CompressionResponse::failure('Failed to read compressed file size', $originalSize, $imageFormatEnum);
         }
 
         return CompressionResponse::success(
             path: $outputPath,
             originalSize: $originalSize,
             compressedSize: $compressedSize,
-            format: $format,
+            imageFormatEnum: $imageFormatEnum,
             compressedFileName: $compressedFileName,
             outputDirectory: $outputDirectory,
         );
@@ -123,9 +125,9 @@ class ImageCompressorImagickService extends AbstractImageCompressorService
      * Maps ImageFormatEnum to the format string expected by Imagick.
      * Imagick requires 'jpeg' instead of 'jpg'.
      */
-    private function imagickFormat(ImageFormatEnum $format): string
+    private function imagickFormat(ImageFormatEnum $imageFormatEnum): string
     {
-        return match ($format) {
+        return match ($imageFormatEnum) {
             ImageFormatEnum::JPG => 'jpeg',
             ImageFormatEnum::WEBP => 'webp',
         };

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PicDiet\Dto;
 
 use PicDiet\Enum\ImageFormatEnum;
@@ -34,7 +36,7 @@ class CompressionResponse
         string $path,
         int $originalSize,
         int $compressedSize,
-        ImageFormatEnum $format,
+        ImageFormatEnum $imageFormatEnum,
         string $compressedFileName,
         string $outputDirectory,
     ): self {
@@ -44,7 +46,7 @@ class CompressionResponse
             error: null,
             originalSize: $originalSize,
             compressedSize: $compressedSize,
-            format: $format,
+            format: $imageFormatEnum,
             compressedFileName: $compressedFileName,
             outputDirectory: $outputDirectory,
         );
@@ -53,7 +55,7 @@ class CompressionResponse
     public static function failure(
         string $error,
         int $originalSize = 0,
-        ?ImageFormatEnum $format = null,
+        ?ImageFormatEnum $imageFormatEnum = null,
     ): self {
         return new self(
             success: false,
@@ -61,7 +63,7 @@ class CompressionResponse
             error: $error,
             originalSize: $originalSize,
             compressedSize: 0,
-            format: $format,
+            format: $imageFormatEnum,
             compressedFileName: null,
             outputDirectory: null,
         );

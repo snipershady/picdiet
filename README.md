@@ -18,7 +18,7 @@ Supports two backends: **GD** (built-in, zero extra dependencies) and **Imagick*
 
 | Requirement | Version | Notes |
 |---|---|---|
-| PHP | >= 8.3 | |
+| PHP | >= 8.4 | |
 | ext-gd | * | Required for the GD backend |
 | ext-imagick | * | Optional — required only for the Imagick backend |
 
@@ -26,15 +26,15 @@ Supports two backends: **GD** (built-in, zero extra dependencies) and **Imagick*
 
 ## Installing PHP extensions on Debian / Ubuntu
 
-> Replace `php8.3` with your actual PHP version. Check it with `php -v`.
+> Replace `php8.4` with your actual PHP version. Check it with `php -v`.
 
 ### ext-gd
 
 ```bash
 sudo apt update
-sudo apt install php8.3-gd
+sudo apt install php8.4-gd
 sudo phpenmod gd
-sudo systemctl restart php8.3-fpm   # or apache2, nginx, etc.
+sudo systemctl restart php8.4-fpm   # or apache2, nginx, etc.
 ```
 
 Verify:
@@ -51,9 +51,9 @@ Imagick requires both the PHP extension and the ImageMagick system library.
 
 ```bash
 sudo apt update
-sudo apt install imagemagick php8.3-imagick
+sudo apt install imagemagick php8.4-imagick
 sudo phpenmod imagick
-sudo systemctl restart php8.3-fpm
+sudo systemctl restart php8.4-fpm
 ```
 
 Verify:
@@ -138,7 +138,7 @@ if (ImageCompressorFactory::isAvailable(CompressionStrategy::IMAGICK)) {
 ```php
 $response = $service->compress(
     sourcePath:      '/path/to/image.png',    // required
-    format:          ImageFormatEnum::WEBP,   // WEBP (default) or JPG
+    imageFormatEnum: ImageFormatEnum::WEBP,   // WEBP (default) or JPG
     maxWidth:        1920,                    // default 1920 px
     maxHeight:       1080,                    // default 1080 px
     quality:         85,                      // 0–100, default 85
@@ -149,7 +149,7 @@ $response = $service->compress(
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `$sourcePath` | `string` | — | Absolute path to the source image |
-| `$format` | `ImageFormatEnum` | `WEBP` | Output format: `WEBP` or `JPG` |
+| `$imageFormatEnum` | `ImageFormatEnum` | `WEBP` | Output format: `WEBP` or `JPG` |
 | `$maxWidth` | `int` | `1920` | Max output width in pixels. The image is never upscaled |
 | `$maxHeight` | `int` | `1080` | Max output height in pixels. Aspect ratio is always preserved |
 | `$quality` | `int\|null` | `85` | Compression quality 0–100 |
@@ -324,7 +324,7 @@ $service = ImageCompressorFactory::createBest();
 // Resize to at most 1280×720, keeping aspect ratio
 $response = $service->compress(
     sourcePath: '/var/www/uploads/photo.jpg',
-    format:     ImageFormatEnum::WEBP,
+    imageFormatEnum: ImageFormatEnum::WEBP,
     maxWidth:   1280,
     maxHeight:  720,
 );
@@ -345,7 +345,7 @@ use PicDiet\Service\ImageCompressorFactory;
 $service = ImageCompressorFactory::createBest();
 $response = $service->compress(
     sourcePath: '/var/www/uploads/photo.jpg',
-    format:     ImageFormatEnum::WEBP,
+    imageFormatEnum: ImageFormatEnum::WEBP,
     maxWidth:   300,
     maxHeight:  300,
     quality:    70,
@@ -365,7 +365,7 @@ use PicDiet\Service\ImageCompressorFactory;
 $service = ImageCompressorFactory::createBest();
 $response = $service->compress(
     sourcePath:      '/var/www/uploads/photo.jpg',
-    format:          ImageFormatEnum::WEBP,
+    imageFormatEnum: ImageFormatEnum::WEBP,
     outputDirectory: '/var/www/compressed/',
 );
 
@@ -390,14 +390,14 @@ $service = ImageCompressorFactory::createBest();
 // High quality — larger file, ideal for print or editorial
 $response = $service->compress(
     sourcePath: '/var/www/uploads/photo.jpg',
-    format:     ImageFormatEnum::WEBP,
+    imageFormatEnum: ImageFormatEnum::WEBP,
     quality:    95,
 );
 
 // Low quality — smallest file, acceptable for previews and thumbnails
 $response = $service->compress(
     sourcePath: '/var/www/uploads/photo.jpg',
-    format:     ImageFormatEnum::WEBP,
+    imageFormatEnum: ImageFormatEnum::WEBP,
     quality:    40,
 );
 ```
@@ -449,7 +449,7 @@ $outputDir = '/var/www/compressed/';
 foreach (glob('/var/www/uploads/*.{jpg,jpeg,png}', GLOB_BRACE) as $sourcePath) {
     $response = $service->compress(
         sourcePath:      $sourcePath,
-        format:          ImageFormatEnum::WEBP,
+        imageFormatEnum: ImageFormatEnum::WEBP,
         maxWidth:        1920,
         maxHeight:       1080,
         quality:         85,
@@ -506,7 +506,7 @@ class ImageUploadController
 
         $response = $this->compressor->compress(
             sourcePath:      $uploadPath,
-            format:          ImageFormatEnum::WEBP,
+            imageFormatEnum: ImageFormatEnum::WEBP,
             maxWidth:        1920,
             maxHeight:       1080,
             outputDirectory: '/var/www/compressed/',
@@ -560,7 +560,7 @@ class ImageController extends Controller
 
         $response = $this->compressor->compress(
             sourcePath:      $fullPath,
-            format:          ImageFormatEnum::WEBP,
+            imageFormatEnum: ImageFormatEnum::WEBP,
             maxWidth:        1920,
             maxHeight:       1080,
             outputDirectory: storage_path('app/compressed'),
@@ -591,7 +591,7 @@ class MyCloudCompressor implements ImageCompressorInterface
     #[\Override]
     public function compress(
         string $sourcePath,
-        ImageFormatEnum $format = ImageFormatEnum::WEBP,
+        ImageFormatEnum $imageFormatEnum = ImageFormatEnum::WEBP,
         int $maxWidth = 1920,
         int $maxHeight = 1080,
         ?int $quality = null,
@@ -602,7 +602,7 @@ class MyCloudCompressor implements ImageCompressorInterface
             path:             '/tmp/output.webp',
             originalSize:     filesize($sourcePath),
             compressedSize:   1234,
-            format:           $format,
+            imageFormatEnum:  $imageFormatEnum,
             compressedFileName: 'output_compressed.webp',
             outputDirectory:  '/tmp',
         );

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PicDiet\Service;
 
 use PicDiet\Dto\CompressionResponse;
@@ -23,7 +25,7 @@ interface ImageCompressorInterface
      * the first frame (animation lost), Imagick preserves all frames.
      *
      * @param string          $sourcePath      Path to the source image
-     * @param ImageFormatEnum $format          Output format (default: ImageFormatEnum::WEBP)
+     * @param ImageFormatEnum $imageFormatEnum Output format (default: ImageFormatEnum::WEBP)
      * @param int             $maxWidth        Maximum width (default: 1920)
      * @param int             $maxHeight       Maximum height (default: 1080)
      * @param int|null        $quality         Compression quality 0-100 (default: 85)
@@ -34,7 +36,7 @@ interface ImageCompressorInterface
      */
     public function compress(
         string $sourcePath,
-        ImageFormatEnum $format = ImageFormatEnum::WEBP,
+        ImageFormatEnum $imageFormatEnum = ImageFormatEnum::WEBP,
         int $maxWidth = 1920,
         int $maxHeight = 1080,
         ?int $quality = null,

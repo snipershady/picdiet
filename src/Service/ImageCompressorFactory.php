@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PicDiet\Service;
 
 use PicDiet\Enum\CompressionStrategy;
@@ -20,9 +22,9 @@ class ImageCompressorFactory
      *
      * @throws \RuntimeException if the required PHP extension is not loaded
      */
-    public static function factory(CompressionStrategy $strategy = CompressionStrategy::GD): ImageCompressorInterface
+    public static function factory(CompressionStrategy $compressionStrategy = CompressionStrategy::GD): ImageCompressorInterface
     {
-        return match ($strategy) {
+        return match ($compressionStrategy) {
             CompressionStrategy::GD => self::createGd(),
             CompressionStrategy::IMAGICK => self::createImagick(),
         };
@@ -42,9 +44,9 @@ class ImageCompressorFactory
     /**
      * Returns true if the PHP extension required by the given strategy is loaded.
      */
-    public static function isAvailable(CompressionStrategy $strategy): bool
+    public static function isAvailable(CompressionStrategy $compressionStrategy): bool
     {
-        return match ($strategy) {
+        return match ($compressionStrategy) {
             CompressionStrategy::GD => extension_loaded('gd'),
             CompressionStrategy::IMAGICK => extension_loaded('imagick'),
         };
