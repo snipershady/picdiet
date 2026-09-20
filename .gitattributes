@@ -1,9 +1,21 @@
+# Normalize line endings for everyone, regardless of local git config.
+* text=auto eol=lf
+
+# Binary fixtures — never touched by line-ending normalization.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.bmp binary
+
+# Files irrelevant to consumers — excluded from `composer require` (dist archive).
 /tests export-ignore
 /rector.php export-ignore
 /.php-cs-fixer.dist.php export-ignore
-/README.md export-ignore
 /phpstan.dist.neon export-ignore
+/phpunit.xml export-ignore
+/composer.lock export-ignore
 /.gitattributes export-ignore
 /.gitignore export-ignore
 /.github/ export-ignore
-/.php-cs-fixer.cache export-ignore
