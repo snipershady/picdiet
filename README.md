@@ -18,7 +18,7 @@ Supports two backends: **GD** (built-in, zero extra dependencies) and **Imagick*
 
 | Requirement | Version | Notes |
 |---|---|---|
-| PHP | >= 8.4 | |
+| PHP | >= 8.3 | |
 | ext-gd | * | Required for the GD backend |
 | ext-imagick | * | Optional — required only for the Imagick backend |
 

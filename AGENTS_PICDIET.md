@@ -22,7 +22,7 @@ result DTO instead of throwing for runtime failures.
 |---|---|
 | Package | `snipershady/picdiet` |
 | Install | `composer require snipershady/picdiet` |
-| PHP | `>= 8.4` (uses typed class constants, `#[\Override]`) |
+| PHP | `>= 8.3` (uses typed class constants, `#[\Override]`) |
 | Required ext | `ext-gd` |
 | Optional ext | `ext-imagick` (+ system ImageMagick) |
 | Runtime deps | none |
