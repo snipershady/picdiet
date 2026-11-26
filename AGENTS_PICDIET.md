@@ -22,10 +22,11 @@ result DTO instead of throwing for runtime failures.
 |---|---|
 | Package | `snipershady/picdiet` |
 | Install | `composer require snipershady/picdiet` |
-| PHP | `>= 8.3` (uses typed class constants, `#[\Override]`) |
+| PHP | `>= 8.3` (uses typed class constants and `#[\Override]`, both 8.3 features; no 8.4-only syntax). CI matrix: 8.3, 8.4, 8.5 |
 | Required ext | `ext-gd` |
 | Optional ext | `ext-imagick` (+ system ImageMagick) |
 | Runtime deps | none |
+| Dev tooling | PHPUnit ^12, PHPStan (level max), Rector, PHP-CS-Fixer — lock file resolved for PHP 8.3 (`symfony/*` 7.4) |
 | Namespace / PSR-4 | `PicDiet\` → `src/` |
 | License | **GPL-2.0-only** (copyleft — check compatibility before shipping in proprietary/distributed software) |
 | Output formats | WebP (`'webp'`), JPEG (`'jpg'`) only |
